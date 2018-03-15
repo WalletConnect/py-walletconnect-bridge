@@ -39,7 +39,7 @@ export VIRTUALENVWRAPPER_PYTHON=/usr/local/bin/python3
 source /usr/local/bin/virtualenvwrapper.sh
 ~~~~
 
-From the project directory, run these commands to install the balance\_bridge package in a virtualenv called "balance\_bridge"
+From the project directory, run these commands to install the balance-bridge package in a virtualenv called "balance-bridge"
 ~~~~
 $ mkvirtualenv balance-bridge
 $ pip install -r requirements.txt
