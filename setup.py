@@ -4,11 +4,10 @@ setup(
   name='balance-bridge',
   version="0.1",
   install_requires=[
-    'Flask',
-    'Flask-API',
-    'nose',
-    'mock',
+    'aiohttp',
     'redis',
+    'pyfcm',
+    'boto3',
   ],
   packages=find_packages(),
   entry_points={

@@ -1,115 +1,131 @@
-from flask import Flask, request, jsonify, abort
-from flask_api import status
+import sys
+import argparse
 
-from balance_bridge import keystore
-from balance_bridge.keystore import KeystoreWriteError, KeystoreFetchError
+from aiohttp import web
+import boto3
 
-app = Flask(__name__)
+from balance_bridge.keystore import KeyValueStore
+from balance_bridge.push_notifications import PushNotificationsService
+from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError
 
-# TODO unify response pattern
+routes = web.RouteTableDef()
 
-@app.errorhandler(400)
-def bad_request_handler(error):
-  message = {'message': repr(error)}
-  return jsonify(message), status.HTTP_400_BAD_REQUEST
-
-
-@app.errorhandler(500)
-def internal_server_error_handler(error):
-  message = {'message': repr(error)}
-  return jsonify(message), status.HTTP_500_INTERNAL_SERVER_ERROR
-
-
-@app.route('/register_push_notifications', methods=['PUT'])
-def register_push_notifications():
-  request_json = request.get_json()
-  try:
-    device_uuid = request_json['device_uuid']
-  except (KeyError, TypeError) as kte:
-    return bad_request_handler(kte)
-  except Exception as e:
-    return internal_server_error_handler(e)
-  # TODO: register push notifications
-  return '', status.HTTP_202_ACCEPTED
-
-
-@app.route('/create_shared_connection', methods=['PUT'])
-def create_shared_connection():
-  request_json = request.get_json()
+@routes.put('/create_shared_connection')
+async def create_shared_connection(request):
+  request_json = await request.json()
   try:
     token = request_json["token"]
+    keystore = request.app['io.balance.bridge.keystore']
     keystore.add_shared_connection(token)
-  except (KeyError, TypeError) as kte:
-    return bad_request_handler(kte)
-  except (KeystoreWriteError, Exception) as e:
-    return internal_server_error_handler(e)
-  return '', status.HTTP_201_CREATED
+  except (KeyError, TypeError):
+    raise web.HTTPBadRequest
+  except (KeystoreWriteError, Exception):
+    raise web.HTTPInternalServerError
+  return web.Response(status=201)
 
 
-@app.route('/update_connection_details', methods=['POST'])
-def update_connection_details():
-  request_json = request.get_json()
+@routes.post('/update_connection_details')
+async def update_connection_details(request):
+  request_json = await request.json()
   try:
     token = request_json['token']
     encrypted_payload = request_json['encrypted_payload']
+    keystore = request.app['io.balance.bridge.keystore']
     keystore.update_connection_details(token, encrypted_payload)
-  except (KeyError, TypeError) as kte:
-    return bad_request_handler(kte)
-  except (KeystoreWriteError, Exception) as e:
-    return internal_server_error_handler(e)
-  return '', status.HTTP_202_ACCEPTED
+  except (KeyError, TypeError):
+    raise web.HTTPBadRequest
+  except (KeystoreWriteError, Exception):
+    raise web.HTTPInternalServerError
+  return web.Response(status=202)
 
 
-@app.route('/pop_connection_details', methods=['POST'])
-def pop_connection_details():
-  request_json = request.get_json()
+@routes.post('/pop_connection_details')
+async def pop_connection_details(request):
+  request_json = await request.json()
   try:
     token = request_json['token']
+    keystore = request.app['io.balance.bridge.keystore']
     connection_details = keystore.pop_connection_details(token)
     if connection_details:
       json_response = {"encrypted_payload": connection_details}
-      return jsonify(json_response), status.HTTP_200_OK
+      return web.json_response(json_response)
     else: 
-      return '', status.HTTP_204_NO_CONTENT
-  except (KeyError, TypeError) as kte:
-    return bad_request_handler(kte)
-  except Exception as e:
-    return internal_server_error_handler(e)
+      return web.Response(status=204)
+  except (KeyError, TypeError):
+    raise web.HTTPBadRequest
+  except Exception:
+    raise web.HTTPInternalServerError
 
 
-@app.route('/initiate_transaction', methods=['PUT'])
-def initiate_transaction():
-  request_json = request.get_json()
+@routes.put('/initiate_transaction')
+async def initiate_transaction(request):
+  request_json = await request.json()
   try:
     transaction_uuid = request_json['transaction_uuid']
     device_uuid = request_json['device_uuid']
     encrypted_payload = request_json['encrypted_payload']
+    keystore = request.app['io.balance.bridge.keystore']
     keystore.add_transaction(transaction_uuid, device_uuid, encrypted_payload)
-  except (KeyError, TypeError) as kte:
-    return bad_request_handler(kte)
-  except Exception as e:
-    return internal_server_error_handler(e)
-  # TODO: server sends push notification to mobile client given by device UUID with data being transaction UUID
-  return '', status.HTTP_201_CREATED
+    data_message = {"transaction_uuid": transaction_uuid }
+    push_notifications_service = request.app['io.balance.bridge.push_notifications_service']
+    push_notifications_service.notify(
+        registration_id=device_uuid,
+        message_title='Balance Manager',
+        message_body='Confirm your transaction',
+        data_message=data_message)
+    return web.Response(status=201)
+  except (KeyError, TypeError):
+    raise web.HTTPBadRequest
+  except (FirebaseError, Exception):
+    raise web.HTTPInternalServerError
 
 
-@app.route('/pop_transaction_details', methods=['POST'])
-def pop_transaction_details():
-  request_json = request.get_json()
+@routes.post('/pop_transaction_details')
+async def pop_transaction_details(request):
+  request_json = await request.json()
   try:
     transaction_uuid = request_json['transaction_uuid']
     device_uuid = request_json['device_uuid']
+    keystore = request.app['io.balance.bridge.keystore']
     details = keystore.pop_transaction_details(transaction_uuid, device_uuid)
     json_response = {"encrypted_payload": details}
-    return jsonify(json_response), status.HTTP_200_OK
-  except (KeyError, TypeError) as kte:
-    return bad_request_handler(kte)
-  except (KeystoreFetchError, Exception) as e:
-    return internal_server_error_handler(e)
+    return web.json_response(json_response)
+  except (KeyError, TypeError):
+    raise web.HTTPBadRequest
+  except (KeystoreFetchError, Exception):
+    raise web.HTTPInternalServerError
+
+
+def initialize_push_notifications(debug=False):
+  api_key = "api_key"
+  if not debug:
+    api_key_response = boto3_client.get_parameter(Name='firebase_api_key',
+                                                  WithDecryption=True)
+    api_key = api_key_response['Parameter']['Value']
+  return PushNotificationsService(api_key=api_key, debug=debug)
+
+
+def initialize_key_value_store(debug=False):
+  if not debug:
+    redis_host_response = boto3_client.get_parameter(Name='redis_host',
+                                                     WithDecryption=False)
+    host = redis_host_response['Parameter']['Value']
+    return KeyValueStore(host=host)
+  else:
+    return KeyValueStore()
 
 
 def main(): 
-  app.run(port=5000, debug=True)
+  app = web.Application()
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--debug', action='store_true')
+  args = parser.parse_args()
+  if not args.debug:
+    app['io.balance.bridge.boto3_client'] = boto3.client('ssm')
+  app['io.balance.bridge.push_notifications_service'] = initialize_push_notifications(args.debug)
+  app['io.balance.bridge.keystore'] = initialize_key_value_store(args.debug)
+  app.router.add_routes(routes)
+  web.run_app(app, port=5000)
 
 
 if __name__ == '__main__':
