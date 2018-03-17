@@ -4,11 +4,20 @@ import argparse
 from aiohttp import web
 import boto3
 
-from balance_bridge.keystore import KeyValueStore
+from balance_bridge.keystore import RedisKeystore
 from balance_bridge.push_notifications import PushNotificationsService
-from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError
+from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError, KeystoreTokenExpiredError
 
 routes = web.RouteTableDef()
+
+def error_message(message):
+  return {"message": message}
+
+
+@routes.get('/hello')
+async def hello(request):
+  return web.Response(text="hello world")
+
 
 @routes.put('/create_shared_connection')
 async def create_shared_connection(request):
@@ -17,10 +26,14 @@ async def create_shared_connection(request):
     token = request_json["token"]
     keystore = request.app['io.balance.bridge.keystore']
     keystore.add_shared_connection(token)
-  except (KeyError, TypeError):
-    raise web.HTTPBadRequest
-  except (KeystoreWriteError, Exception):
-    raise web.HTTPInternalServerError
+  except KeyError as ke:
+    return web.json_response(error_message("Incorrect input parameters"), status=400)
+  except TypeError as te:
+    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+  except KeystoreWriteError as kwe:
+    return web.json_response(error_message("Error writing to db"), status=500)
+  except:
+    return web.json_response(error_message("Error unknown"), status=500)
   return web.Response(status=201)
 
 
@@ -32,10 +45,14 @@ async def update_connection_details(request):
     encrypted_payload = request_json['encrypted_payload']
     keystore = request.app['io.balance.bridge.keystore']
     keystore.update_connection_details(token, encrypted_payload)
-  except (KeyError, TypeError):
-    raise web.HTTPBadRequest
-  except (KeystoreWriteError, Exception):
-    raise web.HTTPInternalServerError
+  except KeyError as ke:
+    return web.json_response(error_message("Incorrect input parameters"), status=400)
+  except TypeError as te:
+    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+  except KeystoreTokenExpiredError as ktee:
+    return web.json_response(error_message("Connection sharing token has expired"), status=500)
+  except:
+    return web.json_response(error_message("Error unknown"), status=500)
   return web.Response(status=202)
 
 
@@ -51,10 +68,12 @@ async def pop_connection_details(request):
       return web.json_response(json_response)
     else: 
       return web.Response(status=204)
-  except (KeyError, TypeError):
-    raise web.HTTPBadRequest
-  except Exception:
-    raise web.HTTPInternalServerError
+  except KeyError as ke:
+    return web.json_response(error_message("Incorrect input parameters"), status=400)
+  except TypeError as te:
+    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+  except:
+    return web.json_response(error_message("Error unknown"), status=500)
 
 
 @routes.put('/initiate_transaction')
@@ -74,10 +93,14 @@ async def initiate_transaction(request):
         message_body='Confirm your transaction',
         data_message=data_message)
     return web.Response(status=201)
-  except (KeyError, TypeError):
-    raise web.HTTPBadRequest
-  except (FirebaseError, Exception):
-    raise web.HTTPInternalServerError
+  except KeyError as ke:
+    return web.json_response(error_message("Incorrect input parameters"), status=400)
+  except TypeError as te:
+    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+  except FirebaseError as fe:
+    return web.json_response(error_message("Error pushing notifications through Firebase"), status=500)
+  except:
+      return web.json_response(error_message("Error unknown"), status=500)
 
 
 @routes.post('/pop_transaction_details')
@@ -90,40 +113,44 @@ async def pop_transaction_details(request):
     details = keystore.pop_transaction_details(transaction_uuid, device_uuid)
     json_response = {"encrypted_payload": details}
     return web.json_response(json_response)
-  except (KeyError, TypeError):
-    raise web.HTTPBadRequest
-  except (KeystoreFetchError, Exception):
-    raise web.HTTPInternalServerError
+  except KeyError as ke:
+    return web.json_response(error_message("Incorrect input parameters"), status=400)
+  except TypeError as te:
+    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+  except KeystoreFetchError as kfe:
+    return web.json_response(error_message("Error retrieving transaciton details"), status=500)
+  except:
+    return web.json_response(error_message("Error unknown"), status=500)
+
+
+def get_kms_parameter(param_name):
+   ssm = boto3.client('ssm', region_name='us-east-2')
+   response = ssm.get_parameters(Names=[param_name], WithDecryption=True)
+   return response['Parameters'][0]['Value']
 
 
 def initialize_push_notifications(debug=False):
-  api_key = "api_key"
   if not debug:
-    api_key_response = boto3_client.get_parameter(Name='firebase_api_key',
-                                                  WithDecryption=True)
-    api_key = api_key_response['Parameter']['Value']
-  return PushNotificationsService(api_key=api_key, debug=debug)
+    api_key = get_kms_parameter('fcm-server-key')
+    return PushNotificationsService(api_key=api_key, debug=debug)
+  return PushNotificationsService(debug=debug)
 
 
-def initialize_key_value_store(debug=False):
+def initialize_keystore(debug=False):
   if not debug:
-    redis_host_response = boto3_client.get_parameter(Name='redis_host',
-                                                     WithDecryption=False)
-    host = redis_host_response['Parameter']['Value']
-    return KeyValueStore(host=host)
-  else:
-    return KeyValueStore()
+    host = get_kms_parameter('balance-bridge-redis-host')
+    return RedisKeystore(host=host)
+  return RedisKeystore()
 
 
 def main(): 
   app = web.Application()
   parser = argparse.ArgumentParser()
-  parser.add_argument('--debug', action='store_true')
+  parser.add_argument('--redis-local', action='store_true')
+  parser.add_argument('--push-local', action='store_true')
   args = parser.parse_args()
-  if not args.debug:
-    app['io.balance.bridge.boto3_client'] = boto3.client('ssm')
-  app['io.balance.bridge.push_notifications_service'] = initialize_push_notifications(args.debug)
-  app['io.balance.bridge.keystore'] = initialize_key_value_store(args.debug)
+  app['io.balance.bridge.push_notifications_service'] = initialize_push_notifications(args.push_local)
+  app['io.balance.bridge.keystore'] = initialize_keystore(args.redis_local)
   app.router.add_routes(routes)
   web.run_app(app, port=5000)
 

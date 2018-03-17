@@ -6,6 +6,9 @@ class KeystoreWriteError(Exception):
   pass
 
 
-class KeystoreFetchError(Exception):
+class KeystoreTokenExpiredError(Exception):
   pass
 
+
+class KeystoreFetchError(Exception):
+  pass

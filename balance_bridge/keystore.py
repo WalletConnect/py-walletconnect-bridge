@@ -1,9 +1,9 @@
 import redis
 
-from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError
+from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, FirebaseError
 
 
-class KeyValueStore(object):
+class RedisKeystore(object):
 
   def __init__(self, host='localhost', port=6379, db=0,
                charset='utf-8', decode_responses=True):
@@ -20,18 +20,23 @@ class KeyValueStore(object):
     return "txn:{}:{}".format(transaction_uuid, device_uuid)
 
 
+  def write(self, key, value='', expiration_in_seconds=120, write_only_if_exists=False):
+    success = self.redis_keystore.set(key, value, ex=expiration_in_seconds, xx=write_only_if_exists)
+    return success
+
+
   def add_shared_connection(self, token):
     key = self.connection_key(token)
-    success = self.redis_keystore.set(key, '')
+    success = self.write(key)
     if not success:
-      raise KeystoreWriteError()
+      raise KeystoreWriteError
 
 
   def update_connection_details(self, token, encrypted_payload):
     key = self.connection_key(token)
-    success = self.redis_keystore.set(key, encrypted_payload)
+    success = self.write(key, encrypted_payload, write_only_if_exists=True)
     if not success:
-      raise KeystoreWriteError()
+      raise KeystoreTokenExpiredError
 
 
   def pop_connection_details(self, token):
@@ -44,15 +49,14 @@ class KeyValueStore(object):
 
   def add_transaction(self, transaction_uuid, device_uuid, encrypted_payload):
     key = self.transaction_key(transaction_uuid, device_uuid)
-    success = self.redis_keystore.set(key, encrypted_payload)
+    success = self.write(key, encrypted_payload)
     if not success:
-      raise KeystoreWriteError()
+      raise KeystoreWriteError
 
 
   def pop_transaction_details(self, transaction_uuid, device_uuid):
     key = self.transaction_key(transaction_uuid, device_uuid)
     details = self.redis_keystore.get(key)
-    print(details)
     if not details:
       raise KeystoreFetchError
     else:

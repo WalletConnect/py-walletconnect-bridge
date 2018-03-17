@@ -2,7 +2,7 @@ from pyfcm import FCMNotification
 
 class PushNotificationsService(object):
 
-  def __init__(self, api_key, debug=False):
+  def __init__(self, api_key='dummy_api_key', debug=False):
     self.push_notifications_service = FCMNotification(api_key=api_key)
     self.debug = debug
 
