@@ -5,7 +5,8 @@ setup(
   version="0.1",
   install_requires=[
     'aiohttp',
-    'redis',
+    'aioredis',
+    'uvloop',
     'pyfcm',
     'boto3',
   ],

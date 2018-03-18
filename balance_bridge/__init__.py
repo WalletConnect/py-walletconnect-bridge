@@ -1,14 +1,21 @@
 import sys
 import argparse
 
+import asyncio
+import uvloop
 from aiohttp import web
 import boto3
 
-from balance_bridge.keystore import RedisKeystore
+import balance_bridge.keystore
 from balance_bridge.push_notifications import PushNotificationsService
 from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError, KeystoreTokenExpiredError
 
 routes = web.RouteTableDef()
+
+REDIS='io.balance.bridge.redis'
+PUSH='io.balance.bridge.push_notifications'
+LOCAL='local'
+SERVICE='service'
 
 def error_message(message):
   return {"message": message}
@@ -23,9 +30,9 @@ async def hello(request):
 async def create_shared_connection(request):
   request_json = await request.json()
   try:
-    token = request_json["token"]
-    keystore = request.app['io.balance.bridge.keystore']
-    keystore.add_shared_connection(token)
+    token = request_json['token']
+    redis_conn = request.app[REDIS][SERVICE]
+    await keystore.add_shared_connection(redis_conn, token)
   except KeyError as ke:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError as te:
@@ -43,8 +50,8 @@ async def update_connection_details(request):
   try:
     token = request_json['token']
     encrypted_payload = request_json['encrypted_payload']
-    keystore = request.app['io.balance.bridge.keystore']
-    keystore.update_connection_details(token, encrypted_payload)
+    redis_conn = request.app[REDIS][SERVICE]
+    await keystore.update_connection_details(redis_conn, token, encrypted_payload)
   except KeyError as ke:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError as te:
@@ -61,8 +68,8 @@ async def pop_connection_details(request):
   request_json = await request.json()
   try:
     token = request_json['token']
-    keystore = request.app['io.balance.bridge.keystore']
-    connection_details = keystore.pop_connection_details(token)
+    redis_conn = request.app[REDIS][SERVICE]
+    connection_details = await keystore.pop_connection_details(redis_conn, token)
     if connection_details:
       json_response = {"encrypted_payload": connection_details}
       return web.json_response(json_response)
@@ -83,11 +90,11 @@ async def initiate_transaction(request):
     transaction_uuid = request_json['transaction_uuid']
     device_uuid = request_json['device_uuid']
     encrypted_payload = request_json['encrypted_payload']
-    keystore = request.app['io.balance.bridge.keystore']
-    keystore.add_transaction(transaction_uuid, device_uuid, encrypted_payload)
+    redis_conn = request.app[REDIS][SERVICE]
+    await keystore.add_transaction(redis_conn, transaction_uuid, device_uuid, encrypted_payload)
     data_message = {"transaction_uuid": transaction_uuid }
-    push_notifications_service = request.app['io.balance.bridge.push_notifications_service']
-    push_notifications_service.notify(
+    push_notifications_service = request.app[PUSH][SERVICE]
+    await push_notifications_service.notify(
         registration_id=device_uuid,
         message_title='Balance Manager',
         message_body='Confirm your transaction',
@@ -109,8 +116,8 @@ async def pop_transaction_details(request):
   try:
     transaction_uuid = request_json['transaction_uuid']
     device_uuid = request_json['device_uuid']
-    keystore = request.app['io.balance.bridge.keystore']
-    details = keystore.pop_transaction_details(transaction_uuid, device_uuid)
+    redis_conn = request.app[REDIS][SERVICE]
+    details = await keystore.pop_transaction_details(redis_conn, transaction_uuid, device_uuid)
     json_response = {"encrypted_payload": details}
     return web.json_response(json_response)
   except KeyError as ke:
@@ -129,29 +136,42 @@ def get_kms_parameter(param_name):
    return response['Parameters'][0]['Value']
 
 
-def initialize_push_notifications(debug=False):
-  if not debug:
+async def initialize_push_notifications(app):
+  local = app[PUSH][LOCAL]
+  if local:
+    app[PUSH][SERVICE] = PushNotificationsService(debug=local)
+  else:
     api_key = get_kms_parameter('fcm-server-key')
-    return PushNotificationsService(api_key=api_key, debug=debug)
-  return PushNotificationsService(debug=debug)
+    app[PUSH][SERVICE] = PushNotificationsService(api_key=api_key, debug=local)
 
 
-def initialize_keystore(debug=False):
-  if not debug:
+async def initialize_keystore(app):
+  if app[REDIS][LOCAL]:
+    app[REDIS][SERVICE] = await keystore.create_connection(event_loop=app.loop)
+  else:
     host = get_kms_parameter('balance-bridge-redis-host')
-    return RedisKeystore(host=host)
-  return RedisKeystore()
+    app[REDIS][SERVICE] = await keystore.create_connection(event_loop=app.loop, host=host)
+
+
+async def close_keystore(app):
+  app[REDIS][SERVICE].close()
+  await app[REDIS][SERVICE].wait_closed()
 
 
 def main(): 
-  app = web.Application()
   parser = argparse.ArgumentParser()
   parser.add_argument('--redis-local', action='store_true')
   parser.add_argument('--push-local', action='store_true')
   args = parser.parse_args()
-  app['io.balance.bridge.push_notifications_service'] = initialize_push_notifications(args.push_local)
-  app['io.balance.bridge.keystore'] = initialize_keystore(args.redis_local)
+
+  app = web.Application()
+  app[REDIS] = {LOCAL: args.redis_local}
+  app[PUSH] = {LOCAL: args.push_local}
+  app.on_startup.append(initialize_push_notifications)
+  app.on_startup.append(initialize_keystore)
+  app.on_cleanup.append(close_keystore)
   app.router.add_routes(routes)
+  asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
   web.run_app(app, port=5000)
 
 

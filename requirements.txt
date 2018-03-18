@@ -1,4 +1,5 @@
-redis=2.10.6
 pyfcm=1.4.5
 boto3=1.6.10
 aiohttp=3.0.9
+aioredis=1.1.0
+lipuv=0.9.1

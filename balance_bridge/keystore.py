@@ -1,66 +1,63 @@
-import redis
+import aioredis
 
 from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, FirebaseError
 
 
-class RedisKeystore(object):
-
-  def __init__(self, host='localhost', port=6379, db=0,
-               charset='utf-8', decode_responses=True):
-    self.redis_keystore = redis.StrictRedis(host=host, port=port,
-                                            db=db, charset=charset,
-                                            decode_responses=decode_responses)
+async def create_connection(event_loop, host='localhost', port=6379, db=0):
+  redis_uri = 'redis://{}:{}/{}'.format(host, port, db)
+  conn = await aioredis.create_redis(address=redis_uri, db=db,
+                                     encoding='utf-8', loop=event_loop)
+  return conn
 
 
-  def connection_key(self, token):
-    return "conn:{}".format(token)
+async def add_shared_connection(conn, token):
+  key = connection_key(token)
+  success = await write(conn, key)
+  if not success:
+    raise KeystoreWriteError
 
 
-  def transaction_key(self, transaction_uuid, device_uuid):
-    return "txn:{}:{}".format(transaction_uuid, device_uuid)
+async def update_connection_details(conn, token, encrypted_payload):
+  key = connection_key(token)
+  success = await write(conn, key, encrypted_payload, write_only_if_exists=True)
+  if not success:
+    raise KeystoreTokenExpiredError
 
 
-  def write(self, key, value='', expiration_in_seconds=120, write_only_if_exists=False):
-    success = self.redis_keystore.set(key, value, ex=expiration_in_seconds, xx=write_only_if_exists)
-    return success
+async def pop_connection_details(conn, token):
+  key = connection_key(token)
+  details = await conn.get(key)
+  if details:
+    await conn.delete(key)
+  return details
 
 
-  def add_shared_connection(self, token):
-    key = self.connection_key(token)
-    success = self.write(key)
-    if not success:
-      raise KeystoreWriteError
+async def add_transaction(conn, transaction_uuid, device_uuid, encrypted_payload):
+  key = transaction_key(transaction_uuid, device_uuid)
+  success = await write(conn, key, encrypted_payload)
+  if not success:
+    raise KeystoreWriteError
 
 
-  def update_connection_details(self, token, encrypted_payload):
-    key = self.connection_key(token)
-    success = self.write(key, encrypted_payload, write_only_if_exists=True)
-    if not success:
-      raise KeystoreTokenExpiredError
-
-
-  def pop_connection_details(self, token):
-    key = self.connection_key(token)
-    details = self.redis_keystore.get(key)
-    if details:
-      self.redis_keystore.delete(key)
+async def pop_transaction_details(conn, transaction_uuid, device_uuid):
+  key = transaction_key(transaction_uuid, device_uuid)
+  details = await conn.get(key)
+  if not details:
+    raise KeystoreFetchError
+  else:
+    await conn.delete(key)
     return details
 
 
-  def add_transaction(self, transaction_uuid, device_uuid, encrypted_payload):
-    key = self.transaction_key(transaction_uuid, device_uuid)
-    success = self.write(key, encrypted_payload)
-    if not success:
-      raise KeystoreWriteError
+def connection_key(token):
+  return "conn:{}".format(token)
 
 
-  def pop_transaction_details(self, transaction_uuid, device_uuid):
-    key = self.transaction_key(transaction_uuid, device_uuid)
-    details = self.redis_keystore.get(key)
-    if not details:
-      raise KeystoreFetchError
-    else:
-      self.redis_keystore.delete(key)
-      return details
+def transaction_key(transaction_uuid, device_uuid):
+  return "txn:{}:{}".format(transaction_uuid, device_uuid)
 
 
+async def write(conn, key, value='', expiration_in_seconds=120, write_only_if_exists=False):
+  exist = 'SET_IF_EXIST' if write_only_if_exists else None
+  success = await conn.set(key, value, expire=expiration_in_seconds, exist=exist)
+  return success

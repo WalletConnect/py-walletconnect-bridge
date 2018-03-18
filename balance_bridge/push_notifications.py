@@ -6,7 +6,7 @@ class PushNotificationsService(object):
     self.push_notifications_service = FCMNotification(api_key=api_key)
     self.debug = debug
 
-  def notify(self, registration_id, message_title, message_body, data_message):
+  async def notify(self, registration_id, message_title, message_body, data_message):
     if self.debug:
       print(data_message)
       return
