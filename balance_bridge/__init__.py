@@ -140,7 +140,7 @@ def get_kms_parameter(param_name):
 async def initialize_push_notifications(app):
   local = app[PUSH][LOCAL]
   if local:
-    session = await aiohttp.ClientSession()
+    session = aiohttp.ClientSession()
     app[PUSH][SERVICE] = PushNotificationsService(session, debug=local)
   else:
     api_key = get_kms_parameter('fcm-server-key')
@@ -160,6 +160,10 @@ async def close_keystore(app):
   await app[REDIS][SERVICE].wait_closed()
 
 
+async def close_push_notification_connection(app):
+  await app[PUSH][SERVICE].session.close()
+
+
 def main(): 
   parser = argparse.ArgumentParser()
   parser.add_argument('--redis-local', action='store_true')
@@ -172,6 +176,7 @@ def main():
   app.on_startup.append(initialize_push_notifications)
   app.on_startup.append(initialize_keystore)
   app.on_cleanup.append(close_keystore)
+  app.on_cleanup.append(close_push_notification_connection)
   app.router.add_routes(routes)
   asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
   web.run_app(app, port=5000)
