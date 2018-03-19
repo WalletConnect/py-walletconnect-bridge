@@ -91,14 +91,16 @@ async def initiate_transaction(request):
     transaction_uuid = request_json['transaction_uuid']
     device_uuid = request_json['device_uuid']
     encrypted_payload = request_json['encrypted_payload']
+    notification_title = request_json['notification_title']
+    notification_body = request_json['notification_body']
     redis_conn = request.app[REDIS][SERVICE]
     await keystore.add_transaction(redis_conn, transaction_uuid, device_uuid, encrypted_payload)
     data_message = {"transaction_uuid": transaction_uuid }
     push_notifications_service = request.app[PUSH][SERVICE]
     await push_notifications_service.notify_single_device(
         registration_id=device_uuid,
-        message_title='Balance Manager',
-        message_body='Confirm your transaction',
+        message_title=notification_title,
+        message_body=notification_body,
         data_message=data_message)
     return web.Response(status=201)
   except KeyError as ke:
