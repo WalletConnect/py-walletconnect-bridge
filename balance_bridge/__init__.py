@@ -2,6 +2,7 @@ import sys
 import argparse
 
 import asyncio
+import aiohttp
 import uvloop
 from aiohttp import web
 import boto3
@@ -94,7 +95,7 @@ async def initiate_transaction(request):
     await keystore.add_transaction(redis_conn, transaction_uuid, device_uuid, encrypted_payload)
     data_message = {"transaction_uuid": transaction_uuid }
     push_notifications_service = request.app[PUSH][SERVICE]
-    await push_notifications_service.notify(
+    await push_notifications_service.notify_single_device(
         registration_id=device_uuid,
         message_title='Balance Manager',
         message_body='Confirm your transaction',
@@ -139,7 +140,8 @@ def get_kms_parameter(param_name):
 async def initialize_push_notifications(app):
   local = app[PUSH][LOCAL]
   if local:
-    app[PUSH][SERVICE] = PushNotificationsService(debug=local)
+    async with aiohttp.ClientSession() as session:
+      app[PUSH][SERVICE] = PushNotificationsService(session, debug=local)
   else:
     api_key = get_kms_parameter('fcm-server-key')
     app[PUSH][SERVICE] = PushNotificationsService(api_key=api_key, debug=local)

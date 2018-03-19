@@ -7,7 +7,6 @@ setup(
     'aiohttp',
     'aioredis',
     'uvloop',
-    'pyfcm',
     'boto3',
   ],
   packages=find_packages(),
