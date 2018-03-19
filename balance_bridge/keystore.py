@@ -34,7 +34,7 @@ async def pop_connection_details(conn, token):
 
 async def add_transaction(conn, transaction_uuid, device_uuid, encrypted_payload):
   key = transaction_key(transaction_uuid, device_uuid)
-  success = await write(conn, key, encrypted_payload)
+  success = await write(conn, key, encrypted_payload, expiration_in_seconds=300)
   if not success:
     raise KeystoreWriteError
 
