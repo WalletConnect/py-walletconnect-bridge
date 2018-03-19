@@ -12,3 +12,7 @@ class KeystoreTokenExpiredError(Exception):
 
 class KeystoreFetchError(Exception):
   pass
+
+
+class InvalidApiKey(Exception):
+  pass

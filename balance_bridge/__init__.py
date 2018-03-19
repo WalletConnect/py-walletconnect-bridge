@@ -9,10 +9,11 @@ import boto3
 
 import balance_bridge.keystore
 from balance_bridge.push_notifications import PushNotificationsService
-from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError, KeystoreTokenExpiredError
+from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError, KeystoreTokenExpiredError, InvalidApiKey
 
 routes = web.RouteTableDef()
 
+API='io.balance.bridge.api_gateway'
 REDIS='io.balance.bridge.redis'
 PUSH='io.balance.bridge.push_notifications'
 LOCAL='local'
@@ -27,10 +28,19 @@ async def hello(request):
   return web.Response(text="hello world")
 
 
+async def check_authorization(request):
+  if 'Authorization' not in request.headers:
+    raise InvalidApiKey
+  api_key = request.headers['Authorization']
+  api_gateway = request.app[API][SERVICE]
+  await keystore.check_api_key(api_gateway, api_key)
+
+
 @routes.put('/create_shared_connection')
 async def create_shared_connection(request):
-  request_json = await request.json()
   try:
+    await check_authorization(request)
+    request_json = await request.json()
     token = request_json['token']
     redis_conn = request.app[REDIS][SERVICE]
     await keystore.add_shared_connection(redis_conn, token)
@@ -40,6 +50,8 @@ async def create_shared_connection(request):
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
   except KeystoreWriteError as kwe:
     return web.json_response(error_message("Error writing to db"), status=500)
+  except InvalidApiKey as iak:
+      return web.json_response(error_message("Unauthorized"), status=401)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
   return web.Response(status=201)
@@ -66,8 +78,9 @@ async def update_connection_details(request):
 
 @routes.post('/pop_connection_details')
 async def pop_connection_details(request):
-  request_json = await request.json()
   try:
+    await check_authorization(request)
+    request_json = await request.json()
     token = request_json['token']
     redis_conn = request.app[REDIS][SERVICE]
     connection_details = await keystore.pop_connection_details(redis_conn, token)
@@ -80,14 +93,17 @@ async def pop_connection_details(request):
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError as te:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
+  except InvalidApiKey as iak:
+      return web.json_response(error_message("Unauthorized"), status=401)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
 
 
 @routes.put('/initiate_transaction')
 async def initiate_transaction(request):
-  request_json = await request.json()
   try:
+    await check_authorization(request)
+    request_json = await request.json()
     transaction_uuid = request_json['transaction_uuid']
     device_uuid = request_json['device_uuid']
     encrypted_payload = request_json['encrypted_payload']
@@ -109,6 +125,8 @@ async def initiate_transaction(request):
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
   except FirebaseError as fe:
     return web.json_response(error_message("Error pushing notifications through Firebase"), status=500)
+  except InvalidApiKey as iak:
+      return web.json_response(error_message("Unauthorized"), status=401)
   except:
       return web.json_response(error_message("Error unknown"), status=500)
 
@@ -153,13 +171,31 @@ async def initialize_keystore(app):
   if app[REDIS][LOCAL]:
     app[REDIS][SERVICE] = await keystore.create_connection(event_loop=app.loop)
   else:
-    host = get_kms_parameter('balance-bridge-redis-host')
-    app[REDIS][SERVICE] = await keystore.create_connection(event_loop=app.loop, host=host)
+    master = get_kms_parameter('balance-bridge-redis-master')
+    slave1 = get_kms_parameter('balance-bridge-redis-slave1')
+    slave2 = get_kms_parameter('balance-bridge-redis-slave2')
+    app[REDIS][SERVICE] = await keystore.create_sentinel_connection(event_loop=app.loop,
+                                                           master=master,
+                                                           slave1=slave1,
+                                                           slave2=slave2)
+
+
+async def initialize_api_gateway(app):
+  if app[API][LOCAL]:
+    app[API][SERVICE] = await keystore.create_connection(event_loop=app.loop, port=6380)
+  else:
+    host = get_kms_parameter('balance-bridge-api-gateway-host')
+    app[API][SERVICE] = await keystore.create_connection(event_loop=app.loop, host=host)
 
 
 async def close_keystore(app):
   app[REDIS][SERVICE].close()
   await app[REDIS][SERVICE].wait_closed()
+
+
+async def close_api_gateway(app):
+  app[API][SERVICE].close()
+  await app[API][SERVICE].wait_closed()
 
 
 async def close_push_notification_connection(app):
@@ -170,18 +206,22 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--redis-local', action='store_true')
   parser.add_argument('--push-local', action='store_true')
+  parser.add_argument('--api-local', action='store_true')
   args = parser.parse_args()
 
   app = web.Application()
+  app[API] = {LOCAL: args.api_local}
   app[REDIS] = {LOCAL: args.redis_local}
   app[PUSH] = {LOCAL: args.push_local}
   app.on_startup.append(initialize_push_notifications)
   app.on_startup.append(initialize_keystore)
+  app.on_startup.append(initialize_api_gateway)
   app.on_cleanup.append(close_keystore)
   app.on_cleanup.append(close_push_notification_connection)
+  app.on_cleanup.append(close_api_gateway)
   app.router.add_routes(routes)
   asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-  web.run_app(app, port=5000)
+  web.run_app(app)
 
 
 if __name__ == '__main__':

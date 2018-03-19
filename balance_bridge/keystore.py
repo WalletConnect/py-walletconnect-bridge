@@ -1,13 +1,18 @@
 import aioredis
 
-from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, FirebaseError
-
+from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, FirebaseError, InvalidApiKey
 
 async def create_connection(event_loop, host='localhost', port=6379, db=0):
   redis_uri = 'redis://{}:{}/{}'.format(host, port, db)
-  conn = await aioredis.create_redis(address=redis_uri, db=db,
+  return await aioredis.create_redis(address=redis_uri, db=db,
                                      encoding='utf-8', loop=event_loop)
-  return conn
+
+
+async def create_sentinel_connection(event_loop, master, slave1, slave2):
+  default_host = 26379
+  sentinels = [(master, default_host), (slave1, default_host), (slave2, default_host)]
+  sentinel = await aioredis.create_sentinel(sentinels, encoding='utf-8', loop=event_loop)
+  return sentinel.master_for('mymaster')
 
 
 async def add_shared_connection(conn, token):
@@ -47,6 +52,19 @@ async def pop_transaction_details(conn, transaction_uuid, device_uuid):
   else:
     await conn.delete(key)
     return details
+
+
+async def check_api_key(conn, api_key):
+  if not api_key:
+    raise InvalidApiKey
+  key = api_redis_key(api_key)
+  details = await conn.get(key)
+  if not details:
+    raise InvalidApiKey
+
+
+def api_redis_key(api_key):
+  return "apikey:{}".format(api_key)
 
 
 def connection_key(token):
