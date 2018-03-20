@@ -24,7 +24,7 @@ class PushNotificationsService(object):
 
   def generate_payload(self, registration_id, message_title, 
                        message_body, data_message):
-    fcm_payload = dict()
+    fcm_payload = {}
     fcm_payload['to'] = registration_id
     fcm_payload['android'] = dict(priority='high')
     fcm_payload['data'] = data_message
@@ -46,10 +46,10 @@ class PushNotificationsService(object):
     print('fcm headers: {}'.format(headers))
     print('session is...')
     print(self.session)
-    resp = await self.session.post(FCM_END_POINT, json=payload, headers=headers)
-    print('response is...')
-    print(resp)
-    return resp
+    async with self.session.post(FCM_END_POINT, json=payload, headers=headers) as resp:
+      print('response is...')
+      print(resp)
+      return resp
 
 
   async def parse_response(self, response):
