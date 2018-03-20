@@ -18,7 +18,6 @@ class PushNotificationsService(object):
       return True
     payload = self.generate_payload(registration_id, message_title,
                                     message_body, data_message)
-    print('push notification payload: {}'.format(payload))
     resp = await self.notify(payload)
     await self.parse_response(response)
 
@@ -45,13 +44,14 @@ class PushNotificationsService(object):
   async def notify(self, payload):
     headers = self.request_headers()
     print('fcm headers: {}'.format(headers))
-    print('session is...')
-    print(self.session)
-    async with aiohttp.ClientSession() as session:
-      async with session.post(FCM_END_POINT, json=payload, headers=headers) as resp:
-        print('response is...')
-        print(resp)
-        return resp
+    print('push notification payload: {}'.format(payload))
+    try:
+      resp = await self.session.post(FCM_END_POINT, json=payload, headers=headers)
+    except Exception as e:
+      print(repr(e))
+    print('response is...')
+    print(resp)
+    return resp
 
 
   async def parse_response(self, response):
