@@ -1,3 +1,4 @@
+import aiohttp
 import json
 
 class PushNotificationsService(object):
@@ -46,10 +47,11 @@ class PushNotificationsService(object):
     print('fcm headers: {}'.format(headers))
     print('session is...')
     print(self.session)
-    async with self.session.post(FCM_END_POINT, json=payload, headers=headers) as resp:
-      print('response is...')
-      print(resp)
-      return resp
+    async with aiohttp.ClientSession() as session:
+      async with session.post(FCM_END_POINT, json=payload, headers=headers) as resp:
+        print('response is...')
+        print(resp)
+        return resp
 
 
   async def parse_response(self, response):
