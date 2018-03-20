@@ -1,6 +1,8 @@
 import aiohttp
 import json
 
+from balance_bridge.errors import FirebaseError
+
 class PushNotificationsService(object):
 
 
@@ -48,7 +50,7 @@ class PushNotificationsService(object):
 
 
   async def parse_response(self, response):
-    if response.status == 200:
+    if response.status != 200:
       raise FirebaseError("FCM server error")
     json_body = await response.json()
     print('fcm response: {}'.format(json_body))
