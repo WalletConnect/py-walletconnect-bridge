@@ -51,9 +51,9 @@ In another terminal, start local Redis instance
 $ redis-server
 ~~~~
 
-Run the project
+Run the project locally
 ~~~~
-$ balance-bridge
+$ balance-bridge --redis-local --push-local --api-local
 ~~~~
 
 Use a tool like Postman to create requests to interact with the server.
