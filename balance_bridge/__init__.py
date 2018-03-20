@@ -160,12 +160,12 @@ def get_kms_parameter(param_name):
 
 async def initialize_push_notifications(app):
   local = app[PUSH][LOCAL]
+  session = aiohttp.ClientSession()
   if local:
-    session = aiohttp.ClientSession()
     app[PUSH][SERVICE] = PushNotificationsService(session, debug=local)
   else:
     api_key = get_kms_parameter('fcm-server-key')
-    app[PUSH][SERVICE] = PushNotificationsService(api_key=api_key, debug=local)
+    app[PUSH][SERVICE] = PushNotificationsService(session=session, api_key=api_key)
 
 
 async def initialize_keystore(app):
