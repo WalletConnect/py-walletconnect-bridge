@@ -147,7 +147,7 @@ async def pop_transaction_details(request):
   except TypeError as te:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
   except KeystoreFetchError as kfe:
-    return web.json_response(error_message("Error retrieving transaciton details"), status=500)
+    return web.json_response(error_message("Error retrieving transaction details"), status=500)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
 
@@ -160,7 +160,7 @@ def get_kms_parameter(param_name):
 
 async def initialize_push_notifications(app):
   local = app[PUSH][LOCAL]
-  session = aiohttp.ClientSession()
+  session = await aiohttp.ClientSession()
   if local:
     app[PUSH][SERVICE] = PushNotificationsService(session, debug=local)
   else:
