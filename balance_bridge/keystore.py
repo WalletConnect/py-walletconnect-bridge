@@ -8,10 +8,12 @@ async def create_connection(event_loop, host='localhost', port=6379, db=0):
                                      encoding='utf-8', loop=event_loop)
 
 
-async def create_sentinel_connection(event_loop, master, slave1, slave2):
-  default_host = 26379
-  sentinels = [(master, default_host), (slave1, default_host), (slave2, default_host)]
-  sentinel = await aioredis.create_sentinel(sentinels, encoding='utf-8', loop=event_loop)
+async def create_sentinel_connection(event_loop, sentinels):
+  default_port = 26379
+  sentinel_ports = [(x, default_port) for x in sentinels]
+  sentinel = await aioredis.create_sentinel(sentinel_ports,
+                                            encoding='utf-8',
+                                            loop=event_loop)
   return sentinel.master_for('mymaster')
 
 

@@ -172,13 +172,9 @@ async def initialize_keystore(app):
   if app[REDIS][LOCAL]:
     app[REDIS][SERVICE] = await keystore.create_connection(event_loop=app.loop)
   else:
-    master = get_kms_parameter('balance-bridge-redis-master')
-    slave1 = get_kms_parameter('balance-bridge-redis-slave1')
-    slave2 = get_kms_parameter('balance-bridge-redis-slave2')
+    sentinels = get_kms_parameter('balance-bridge-redis-sentinels')
     app[REDIS][SERVICE] = await keystore.create_sentinel_connection(event_loop=app.loop,
-                                                           master=master,
-                                                           slave1=slave1,
-                                                           slave2=slave2)
+                                                           sentinels=sentinels.split(','))
 
 
 async def initialize_api_gateway(app):
