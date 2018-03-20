@@ -20,7 +20,7 @@ class PushNotificationsService(object):
       return True
     payload = self.generate_payload(registration_id, message_title,
                                     message_body, data_message)
-    resp = await self.notify(payload)
+    response = await self.notify(payload)
     await self.parse_response(response)
 
 
@@ -50,7 +50,6 @@ class PushNotificationsService(object):
 
 
   async def parse_response(self, response):
-    print(response.status)
     if response.status != 200:
       raise FirebaseError("FCM server error")
     json_body = await response.json()
