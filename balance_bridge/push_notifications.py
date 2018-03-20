@@ -44,6 +44,8 @@ class PushNotificationsService(object):
   async def notify(self, payload):
     headers = self.request_headers()
     print('fcm headers: {}'.format(headers))
+    print('session is...')
+    print(self.session)
     resp = await self.session.post(FCM_END_POINT, json=payload, headers=headers)
     print('response is...')
     print(resp)
