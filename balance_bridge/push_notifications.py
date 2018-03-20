@@ -2,7 +2,7 @@ import json
 
 class PushNotificationsService(object):
 
-  FCM_END_POINT = 'https://fcm.googleapis.com/fcm/send'
+  FCM_END_POINT = 'https://fcm.googleapis.com/v1/projects/balance-bridge/messages:send'
 
   def __init__(self, session, api_key='dummy_api_key', debug=False):
     self.session = session
