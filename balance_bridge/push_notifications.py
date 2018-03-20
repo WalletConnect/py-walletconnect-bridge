@@ -44,17 +44,10 @@ class PushNotificationsService(object):
   async def notify(self, payload):
     headers = self.request_headers()
     print('fcm headers: {}'.format(headers))
-    async with self.session.post(FCM_END_POINT, json=payload, 
-                                 headers=headers) as resp:
-      if 'Retry-After' in resp.headers and int(resp.headers['Retry-After']) > 0:
-        print('retry...')
-        sleep_time = int(resp.headers['Retry-After'])
-        await asyncio.sleep(sleep_time)
-        return await self.notify(payload)
-      else:
-        print('response is...')
-        print(resp)
-        return resp
+    resp = async self.session.post(FCM_END_POINT, json=payload, headers=headers)
+    print('response is...')
+    print(resp)
+    return resp
 
 
   async def parse_response(self, response):
