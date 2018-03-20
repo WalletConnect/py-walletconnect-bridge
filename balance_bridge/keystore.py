@@ -14,7 +14,7 @@ async def create_sentinel_connection(event_loop, sentinels):
   sentinel = await aioredis.create_sentinel(sentinel_ports,
                                             encoding='utf-8',
                                             loop=event_loop)
-  return sentinel.master_for('mymaster')
+  return sentinel
 
 
 async def add_shared_connection(conn, token):

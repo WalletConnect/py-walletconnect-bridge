@@ -53,7 +53,6 @@ class PushNotificationsService(object):
     if response.status != 200:
       raise FirebaseError("FCM server error")
     json_body = await response.json()
-    print('fcm response: {}'.format(json_body))
     success = json_body.get('success', 0)
     if not success:
       raise FirebaseError("FCM server error, push notification failed")

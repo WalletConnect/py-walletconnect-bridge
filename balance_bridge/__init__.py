@@ -24,6 +24,11 @@ def error_message(message):
   return {"message": message}
 
 
+def get_redis_master(app):
+  sentinel = app[REDIS][SERVICE]
+  return sentinel.master_for('mymaster')
+
+
 @routes.get('/hello')
 async def hello(request):
   return web.Response(text="hello world")
@@ -43,7 +48,7 @@ async def create_shared_connection(request):
     await check_authorization(request)
     request_json = await request.json()
     token = request_json['token']
-    redis_conn = request.app[REDIS][SERVICE]
+    redis_conn = get_redis_master(request.app)
     await keystore.add_shared_connection(redis_conn, token)
   except KeyError as ke:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -64,7 +69,7 @@ async def update_connection_details(request):
   try:
     token = request_json['token']
     encrypted_payload = request_json['encrypted_payload']
-    redis_conn = request.app[REDIS][SERVICE]
+    redis_conn = get_redis_master(request.app)
     await keystore.update_connection_details(redis_conn, token, encrypted_payload)
   except KeyError as ke:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -83,7 +88,7 @@ async def pop_connection_details(request):
     await check_authorization(request)
     request_json = await request.json()
     token = request_json['token']
-    redis_conn = request.app[REDIS][SERVICE]
+    redis_conn = get_redis_master(request.app)
     connection_details = await keystore.pop_connection_details(redis_conn, token)
     if connection_details:
       json_response = {"encrypted_payload": connection_details}
@@ -110,7 +115,7 @@ async def initiate_transaction(request):
     encrypted_payload = request_json['encrypted_payload']
     notification_title = request_json['notification_title']
     notification_body = request_json['notification_body']
-    redis_conn = request.app[REDIS][SERVICE]
+    redis_conn = get_redis_master(request.app)
     await keystore.add_transaction(redis_conn, transaction_uuid, device_uuid, encrypted_payload)
     data_message = {"transaction_uuid": transaction_uuid }
     push_notifications_service = request.app[PUSH][SERVICE]
@@ -138,7 +143,7 @@ async def pop_transaction_details(request):
   try:
     transaction_uuid = request_json['transaction_uuid']
     device_uuid = request_json['device_uuid']
-    redis_conn = request.app[REDIS][SERVICE]
+    redis_conn = get_redis_master(request.app)
     details = await keystore.pop_transaction_details(redis_conn, transaction_uuid, device_uuid)
     json_response = {"encrypted_payload": details}
     return web.json_response(json_response)
@@ -190,7 +195,8 @@ async def close_keystore(app):
 
 
 async def close_push_notification_connection(app):
-  await app[PUSH][SERVICE].session.close()
+  if app[PUSH][SERVICE].session:
+    await app[PUSH][SERVICE].session.close()
 
 
 def main(): 
