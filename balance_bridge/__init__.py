@@ -155,6 +155,7 @@ async def pop_transaction_details(request):
 def get_kms_parameter(param_name):
    ssm = boto3.client('ssm', region_name='us-east-2')
    response = ssm.get_parameters(Names=[param_name], WithDecryption=True)
+   print(response)
    return response['Parameters'][0]['Value']
 
 
