@@ -1,4 +1,4 @@
-boto3=1.6.10
-aiohttp=3.0.9
-aioredis=1.1.0
-lipuv=0.9.1
+aiohttp==3.0.9
+aioredis==1.1.0
+uvloop==0.9.1
+boto3==1.6.10
