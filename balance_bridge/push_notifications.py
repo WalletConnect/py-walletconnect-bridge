@@ -3,12 +3,12 @@ import json
 
 class PushNotificationsService(object):
 
-  FCM_END_POINT = 'https://fcm.googleapis.com/fcm/send'
 
   def __init__(self, session=None, api_key='dummy_api_key', debug=False):
     self.session = session
     self.api_key = api_key
     self.debug = debug
+    self.fcm_endpoint = 'https://fcm.googleapis.com/fcm/send'
 
 
   async def notify_single_device(self, registration_id, message_title,
@@ -46,7 +46,7 @@ class PushNotificationsService(object):
     print('fcm headers: {}'.format(headers))
     print('push notification payload: {}'.format(payload))
     try:
-      resp = await self.session.post(FCM_END_POINT, json=payload, headers=headers)
+      resp = await self.session.post(self.fcm_endpoint, json=payload, headers=headers)
     except Exception as e:
       print(repr(e))
     print('response is...')
