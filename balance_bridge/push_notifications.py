@@ -17,6 +17,7 @@ class PushNotificationsService(object):
       return True
     payload = self.generate_payload(registration_id, message_title,
                                     message_body, data_message)
+    print('push notification payload: {}'.format(payload))
     resp = await self.notify(payload)
     await self.parse_response(response)
 
@@ -42,9 +43,11 @@ class PushNotificationsService(object):
 
   async def notify(self, payload):
     headers = self.request_headers()
+    print('fcm headers: {}'.format(headers))
     async with self.session.post(FCM_END_POINT, json=payload, 
                                  headers=headers) as resp:
       if 'Retry-After' in resp.headers and int(resp.headers['Retry-After']) > 0:
+        print('retry...')
         sleep_time = int(resp.headers['Retry-After'])
         await asyncio.sleep(sleep_time)
         return await self.notify(payload)
@@ -58,6 +61,7 @@ class PushNotificationsService(object):
     if 'content-length' in response.headers and int(response.headers['content-length']) <= 0:
       raise FirebaseError("FCM server connection error, the response is empty")
     json_body = await resp.json()
+    print('fcm response: {}'.format(json_body))
     success = json_body.get('success', False)
     if not success:
       raise FirebaseError("FCM server error, push notification failed")
