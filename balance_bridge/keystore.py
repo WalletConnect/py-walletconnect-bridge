@@ -54,15 +54,6 @@ async def pop_transaction_details(conn, transaction_uuid, device_uuid):
     return details
 
 
-async def check_api_key(conn, api_key):
-  if not api_key:
-    raise InvalidApiKey
-  key = api_redis_key(api_key)
-  details = await conn.get(key)
-  if not details:
-    raise InvalidApiKey
-
-
 def api_redis_key(api_key):
   return "apikey:{}".format(api_key)
 

@@ -16,6 +16,7 @@ routes = web.RouteTableDef()
 API='io.balance.bridge.api_gateway'
 REDIS='io.balance.bridge.redis'
 PUSH='io.balance.bridge.push_notifications'
+KEY='key'
 LOCAL='local'
 SERVICE='service'
 
@@ -32,8 +33,8 @@ async def check_authorization(request):
   if 'Authorization' not in request.headers:
     raise InvalidApiKey
   api_key = request.headers['Authorization']
-  api_gateway = request.app[API][SERVICE]
-  await keystore.check_api_key(api_gateway, api_key)
+  if request.app[API][KEY] != api_key:
+    raise InvalidApiKey
 
 
 @routes.put('/create_shared_connection')
@@ -182,20 +183,14 @@ async def initialize_keystore(app):
 
 async def initialize_api_gateway(app):
   if app[API][LOCAL]:
-    app[API][SERVICE] = await keystore.create_connection(event_loop=app.loop, port=6380)
+    app[API][KEY] = 'dummy_api_key'
   else:
-    host = get_kms_parameter('balance-bridge-api-gateway-host')
-    app[API][SERVICE] = await keystore.create_connection(event_loop=app.loop, host=host)
+    app[API][KEY] = get_kms_parameter('balance-bridge-manager-api-key')
 
 
 async def close_keystore(app):
   app[REDIS][SERVICE].close()
   await app[REDIS][SERVICE].wait_closed()
-
-
-async def close_api_gateway(app):
-  app[API][SERVICE].close()
-  await app[API][SERVICE].wait_closed()
 
 
 async def close_push_notification_connection(app):
@@ -218,7 +213,6 @@ def main():
   app.on_startup.append(initialize_api_gateway)
   app.on_cleanup.append(close_keystore)
   app.on_cleanup.append(close_push_notification_connection)
-  app.on_cleanup.append(close_api_gateway)
   app.router.add_routes(routes)
   asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
   web.run_app(app)
