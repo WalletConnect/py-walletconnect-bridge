@@ -43,24 +43,15 @@ class PushNotificationsService(object):
 
   async def notify(self, payload):
     headers = self.request_headers()
-    print('fcm headers: {}'.format(headers))
-    print('push notification payload: {}'.format(payload))
-    try:
-      resp = await self.session.post(self.fcm_endpoint, json=payload, headers=headers)
-    except Exception as e:
-      print(repr(e))
-    print('response is...')
-    print(resp)
+    resp = await self.session.post(self.fcm_endpoint, json=payload, headers=headers)
     return resp
 
 
   async def parse_response(self, response):
     if response.status == 200:
       raise FirebaseError("FCM server error")
-    if 'content-length' in response.headers and int(response.headers['content-length']) <= 0:
-      raise FirebaseError("FCM server connection error, the response is empty")
-    json_body = await resp.json()
+    json_body = await response.json()
     print('fcm response: {}'.format(json_body))
-    success = json_body.get('success', False)
+    success = json_body.get('success', 0)
     if not success:
       raise FirebaseError("FCM server error, push notification failed")
