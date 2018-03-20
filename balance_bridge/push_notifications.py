@@ -2,7 +2,7 @@ import json
 
 class PushNotificationsService(object):
 
-  FCM_END_POINT = 'https://fcm.googleapis.com/v1/projects/balance-bridge/messages:send'
+  FCM_END_POINT = 'https://fcm.googleapis.com/fcm/send'
 
   def __init__(self, session, api_key='dummy_api_key', debug=False):
     self.session = session
@@ -52,6 +52,8 @@ class PushNotificationsService(object):
         await asyncio.sleep(sleep_time)
         return await self.notify(payload)
       else:
+        print('response is...')
+        print(resp)
         return resp
 
 
