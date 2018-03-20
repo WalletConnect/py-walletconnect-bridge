@@ -4,7 +4,7 @@ class PushNotificationsService(object):
 
   FCM_END_POINT = 'https://fcm.googleapis.com/fcm/send'
 
-  def __init__(self, session, api_key='dummy_api_key', debug=False):
+  def __init__(self, session=None, api_key='dummy_api_key', debug=False):
     self.session = session
     self.api_key = api_key
     self.debug = debug
@@ -31,7 +31,7 @@ class PushNotificationsService(object):
     fcm_payload['notification'] = {}
     fcm_payload['notification']['title'] = message_title
     fcm_payload['notification']['body'] = message_body
-    return json.dumps(fcm_payload)
+    return fcm_payload
 
 
   def request_headers(self):
