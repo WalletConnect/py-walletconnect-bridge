@@ -169,7 +169,7 @@ async def initialize_push_notifications(app):
     app[PUSH][SERVICE] = PushNotificationsService(debug=local)
   else:
     api_key = get_kms_parameter('fcm-server-key')
-    session = aiohttp.ClientSession()
+    session = aiohttp.ClientSession(loop=app.loop)
     app[PUSH][SERVICE] = PushNotificationsService(session=session, api_key=api_key)
 
 
