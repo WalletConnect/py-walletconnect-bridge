@@ -1,4 +1,4 @@
-# Balance Bridge
+# WalletBridge
 
 ## Mobile Client Connection Details Sharing
 1. when user wants to connect, web client generates unique public/private key pair for this connection
@@ -39,9 +39,9 @@ export VIRTUALENVWRAPPER_PYTHON=/usr/local/bin/python3
 source /usr/local/bin/virtualenvwrapper.sh
 ~~~~
 
-From the project directory, run these commands to install the balance-bridge package in a virtualenv called "balance-bridge"
+From the project directory, run these commands to install the wallet-bridge package in a virtualenv called "wallet-bridge"
 ~~~~
-$ mkvirtualenv balance-bridge
+$ mkvirtualenv wallet-bridge
 $ pip install -r requirements.txt
 $ python setup.py develop
 ~~~~
@@ -53,7 +53,7 @@ $ redis-server
 
 Run the project locally
 ~~~~
-$ balance-bridge --redis-local --push-local --api-local
+$ wallet-bridge --redis-local --push-local --api-local
 ~~~~
 
 Use a tool like Postman to create requests to interact with the server.

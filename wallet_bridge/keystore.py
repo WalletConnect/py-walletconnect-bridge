@@ -1,6 +1,6 @@
 import aioredis
 
-from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, FirebaseError, InvalidApiKey
+from wallet_bridge.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, FirebaseError, InvalidApiKey
 
 async def create_connection(event_loop, host='localhost', port=6379, db=0):
   redis_uri = 'redis://{}:{}/{}'.format(host, port, db)

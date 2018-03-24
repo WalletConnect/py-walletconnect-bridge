@@ -1,7 +1,7 @@
 import aiohttp
 import json
 
-from balance_bridge.errors import FirebaseError
+from wallet_bridge.errors import FirebaseError
 
 class PushNotificationsService(object):
 

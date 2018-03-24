@@ -7,15 +7,15 @@ import uvloop
 from aiohttp import web
 import boto3
 
-import balance_bridge.keystore
-from balance_bridge.push_notifications import PushNotificationsService
-from balance_bridge.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError, KeystoreTokenExpiredError, InvalidApiKey
+import wallet_bridge.keystore
+from wallet_bridge.push_notifications import PushNotificationsService
+from wallet_bridge.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError, KeystoreTokenExpiredError, InvalidApiKey
 
 routes = web.RouteTableDef()
 
-API='io.balance.bridge.api_gateway'
-REDIS='io.balance.bridge.redis'
-PUSH='io.balance.bridge.push_notifications'
+API='io.wallet.bridge.api_gateway'
+REDIS='io.wallet.bridge.redis'
+PUSH='io.wallet.bridge.push_notifications'
 KEY='key'
 LOCAL='local'
 SERVICE='service'
@@ -177,7 +177,7 @@ async def initialize_keystore(app):
   if app[REDIS][LOCAL]:
     app[REDIS][SERVICE] = await keystore.create_connection(event_loop=app.loop)
   else:
-    sentinels = get_kms_parameter('balance-bridge-redis-sentinels')
+    sentinels = get_kms_parameter('wallet-bridge-redis-sentinels')
     app[REDIS][SERVICE] = await keystore.create_sentinel_connection(event_loop=app.loop,
                                                            sentinels=sentinels.split(','))
 
@@ -186,7 +186,7 @@ async def initialize_api_gateway(app):
   if app[API][LOCAL]:
     app[API][KEY] = 'dummy_api_key'
   else:
-    app[API][KEY] = get_kms_parameter('balance-bridge-manager-api-key')
+    app[API][KEY] = get_kms_parameter('wallet-bridge-manager-api-key')
 
 
 async def close_keystore(app):
