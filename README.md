@@ -1,4 +1,4 @@
-# WalletBridge
+# WalletConnect
 
 ## Mobile Client Connection Details Sharing
 1. when user wants to connect, web client generates unique public/private key pair for this connection
@@ -39,9 +39,9 @@ export VIRTUALENVWRAPPER_PYTHON=/usr/local/bin/python3
 source /usr/local/bin/virtualenvwrapper.sh
 ~~~~
 
-From the project directory, run these commands to install the wallet-bridge package in a virtualenv called "wallet-bridge"
+From the project directory, run these commands to install the wallet-connect package in a virtualenv called "wallet-connect"
 ~~~~
-$ mkvirtualenv wallet-bridge
+$ mkvirtualenv wallet-connect
 $ pip install -r requirements.txt
 $ python setup.py develop
 ~~~~
@@ -53,7 +53,7 @@ $ redis-server
 
 Run the project locally
 ~~~~
-$ wallet-bridge --redis-local --push-local --api-local
+$ wallet-connect --redis-local --push-local --api-local
 ~~~~
 
 Use a tool like Postman to create requests to interact with the server.
