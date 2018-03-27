@@ -9,7 +9,7 @@ import boto3
 
 import wallet_connect.keystore
 from wallet_connect.push_notifications import PushNotificationsService
-from wallet_connect.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError, KeystoreTokenExpiredError, InvalidApiKey
+from wallet_connect.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError, KeystoreTokenExpiredError, InvalidApiKey, KeystoreFcmTokenError
 
 routes = web.RouteTableDef()
 
@@ -49,17 +49,17 @@ async def request_device_details(request):
   try:
     await check_authorization(request)
     request_json = await request.json()
-    token = request_json['token']
+    session_token = request_json['sessionToken']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_device_details_request(redis_conn, token)
+    await keystore.add_request_for_device_details(redis_conn, session_token)
     return web.Response(status=201)
-  except KeyError as ke:
+  except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
-  except TypeError as te:
+  except TypeError:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
-  except KeystoreWriteError as kwe:
+  except KeystoreWriteError:
     return web.json_response(error_message("Error writing to db"), status=500)
-  except InvalidApiKey as iak:
+  except InvalidApiKey:
       return web.json_response(error_message("Unauthorized"), status=401)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
@@ -69,21 +69,21 @@ async def request_device_details(request):
 async def update_device_details(request):
   request_json = await request.json()
   try:
-    token = request_json['token']
-    #fcm_token = request_json['fcm_token']
-    #device_uuid = request_json['device_uuid']
+    session_token = request_json['sessionToken']
+    fcm_token = request_json['fcmToken']
+    device_uuid = request_json['deviceUuid']
     encrypted_payload = request_json['encryptedPayload']
     redis_conn = get_redis_master(request.app)
-    await keystore.update_device_details(redis_conn, token, encrypted_payload)
-  except KeyError as ke:
+    await keystore.update_device_details(redis_conn, session_token, device_uuid, fcm_token, encrypted_payload)
+    return web.Response(status=202)
+  except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
-  except TypeError as te:
+  except TypeError:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
-  except KeystoreTokenExpiredError as ktee:
+  except KeystoreTokenExpiredError:
     return web.json_response(error_message("Connection sharing token has expired"), status=500)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
-  return web.Response(status=202)
 
 
 @routes.post('/get-device-details')
@@ -91,19 +91,19 @@ async def get_device_details(request):
   try:
     await check_authorization(request)
     request_json = await request.json()
-    token = request_json['token']
+    session_token = request_json['sessionToken']
     redis_conn = get_redis_master(request.app)
-    connection_details = await keystore.get_device_details(redis_conn, token)
+    connection_details = await keystore.get_device_details(redis_conn, session_token)
     if connection_details:
       json_response = {"encryptedPayload": connection_details}
       return web.json_response(json_response)
     else: 
       return web.Response(status=204)
-  except KeyError as ke:
+  except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
-  except TypeError as te:
+  except TypeError:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
-  except InvalidApiKey as iak:
+  except InvalidApiKey:
       return web.json_response(error_message("Unauthorized"), status=401)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
@@ -121,21 +121,26 @@ async def add_transaction_details(request):
     notification_body = request_json['notificationBody']
     redis_conn = get_redis_master(request.app)
     await keystore.add_transaction_details(redis_conn, transaction_uuid, device_uuid, encrypted_payload)
-    data_message = {"transactionUuid": transaction_uuid }
+
+    # Send push notification
+    fcm_token = await keystore.get_device_fcm_token(redis_conn, device_uuid)
     push_notifications_service = request.app[PUSH][SERVICE]
+    data_message = {"transactionUuid": transaction_uuid }
     await push_notifications_service.notify_single_device(
-        registration_id=device_uuid,
+        registration_id=fcm_token,
         message_title=notification_title,
         message_body=notification_body,
         data_message=data_message)
     return web.Response(status=201)
-  except KeyError as ke:
+  except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
-  except TypeError as te:
+  except TypeError:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
-  except FirebaseError as fe:
+  except KeystoreFcmTokenError:
+    return web.json_response(error_message("Error finding FCM token for device"), status=500)
+  except FirebaseError:
     return web.json_response(error_message("Error pushing notifications through Firebase"), status=500)
-  except InvalidApiKey as iak:
+  except InvalidApiKey:
       return web.json_response(error_message("Unauthorized"), status=401)
   except:
       return web.json_response(error_message("Error unknown"), status=500)
@@ -151,11 +156,11 @@ async def get_transaction_details(request):
     details = await keystore.get_transaction_details(redis_conn, transaction_uuid, device_uuid)
     json_response = {"encryptedPayload": details}
     return web.json_response(json_response)
-  except KeyError as ke:
+  except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
-  except TypeError as te:
+  except TypeError:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
-  except KeystoreFetchError as kfe:
+  except KeystoreFetchError:
     return web.json_response(error_message("Error retrieving transaction details"), status=500)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
@@ -171,13 +176,13 @@ async def add_transaction_hash(request):
     redis_conn = get_redis_master(request.app)
     await keystore.add_transaction_hash(redis_conn, transaction_uuid, device_uuid, transaction_hash)
     return web.Response(status=201)
-  except KeyError as ke:
+  except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
-  except TypeError as te:
+  except TypeError:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
-  except FirebaseError as fe:
+  except FirebaseError:
     return web.json_response(error_message("Error pushing notifications through Firebase"), status=500)
-  except InvalidApiKey as iak:
+  except InvalidApiKey:
       return web.json_response(error_message("Unauthorized"), status=401)
   except:
       return web.json_response(error_message("Error unknown"), status=500)
@@ -195,13 +200,13 @@ async def get_transaction_hash(request):
     if transaction_hash:
       json_response = {"transactionHash": transaction_hash}
       return web.json_response(json_response)
-    else: 
+    else:
       return web.Response(status=204)
-  except KeyError as ke:
+  except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
-  except TypeError as te:
+  except TypeError:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
-  except InvalidApiKey as iak:
+  except InvalidApiKey:
       return web.json_response(error_message("Unauthorized"), status=401)
   except:
     return web.json_response(error_message("Error unknown"), status=500)

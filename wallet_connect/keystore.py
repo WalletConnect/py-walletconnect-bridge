@@ -1,6 +1,6 @@
 import aioredis
 
-from wallet_connect.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, FirebaseError, InvalidApiKey
+from wallet_connect.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, FirebaseError, InvalidApiKey, KeystoreFcmTokenError
 
 async def create_connection(event_loop, host='localhost', port=6379, db=0):
   redis_uri = 'redis://{}:{}/{}'.format(host, port, db)
@@ -17,22 +17,32 @@ async def create_sentinel_connection(event_loop, sentinels):
   return sentinel
 
 
-async def add_device_details_request(conn, token):
-  key = connection_key(token)
+async def add_request_for_device_details(conn, session_token):
+  key = session_key(session_token)
   success = await write(conn, key)
   if not success:
-    raise KeystoreWriteError
+    raise KeystoreWriteError("Error adding request for device details")
 
 
-async def update_device_details(conn, token, encrypted_payload):
-  key = connection_key(token)
+async def update_device_details(conn, session_token, device_uuid, fcm_token, encrypted_payload):
+  device_key = device_uuid_key(device_uuid)
+  fcm_success = await write(conn, device_key, fcm_token)
+  key = session_key(session_token)
   success = await write(conn, key, encrypted_payload, write_only_if_exists=True)
   if not success:
     raise KeystoreTokenExpiredError
 
 
-async def get_device_details(conn, token):
-  key = connection_key(token)
+async def get_device_fcm_token(conn, device_uuid):
+  device_key = device_uuid_key(device_uuid)
+  fcm_token = await conn.get(device_key)
+  if not fcm_token:
+    raise KeystoreFcmTokenError
+  return fcm_token
+
+
+async def get_device_details(conn, session_token):
+  key = session_key(session_token)
   details = await conn.get(key)
   if details:
     await conn.delete(key)
@@ -43,14 +53,14 @@ async def add_transaction_details(conn, transaction_uuid, device_uuid, encrypted
   key = transaction_key(transaction_uuid, device_uuid)
   success = await write(conn, key, encrypted_payload, expiration_in_seconds=300)
   if not success:
-    raise KeystoreWriteError
+    raise KeystoreWriteError("Error adding transaction details")
 
 
 async def get_transaction_details(conn, transaction_uuid, device_uuid):
   key = transaction_key(transaction_uuid, device_uuid)
   details = await conn.get(key)
   if not details:
-    raise KeystoreFetchError
+    raise KeystoreFetchError("Error getting transaction details")
   else:
     await conn.delete(key)
     return details
@@ -60,7 +70,7 @@ async def add_transaction_hash(conn, transaction_uuid, device_uuid, transaction_
   key = transaction_hash_key(transaction_uuid, device_uuid)
   success = await write(conn, key, transaction_hash)
   if not success:
-    raise KeystoreWriteError
+    raise KeystoreWriteError("Error writing transaction hash")
 
 
 async def get_transaction_hash(conn, transaction_uuid, device_uuid):
@@ -75,8 +85,12 @@ def api_redis_key(api_key):
   return "apikey:{}".format(api_key)
 
 
-def connection_key(token):
-  return "conn:{}".format(token)
+def session_key(session_token):
+  return "session:{}".format(session_token)
+
+
+def device_uuid_key(device_uuid):
+  return "device_uuid:{}".format(device_uuid)
 
 
 def transaction_key(transaction_uuid, device_uuid):

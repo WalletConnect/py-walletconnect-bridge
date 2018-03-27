@@ -10,6 +10,10 @@ class KeystoreTokenExpiredError(Exception):
   pass
 
 
+class KeystoreFcmTokenError(Exception):
+  pass
+
+
 class KeystoreFetchError(Exception):
   pass
 
