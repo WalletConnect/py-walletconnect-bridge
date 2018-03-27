@@ -19,6 +19,7 @@ PUSH='io.wallet.connect.push_notifications'
 KEY='key'
 LOCAL='local'
 SERVICE='service'
+WEB_HEADERS={'ACCESS-CONTROL-ALLOW-ORIGIN': '*'}
 
 def error_message(message):
   return {"message": message}
@@ -44,7 +45,7 @@ async def check_authorization(request):
     raise InvalidApiKey
 
 
-@routes.post('/createSharedConnection')
+@routes.post('/create-shared-connection')
 async def create_shared_connection(request):
   try:
     await check_authorization(request)
@@ -53,19 +54,19 @@ async def create_shared_connection(request):
     redis_conn = get_redis_master(request.app)
     await keystore.add_shared_connection(redis_conn, token)
   except KeyError as ke:
-    return web.json_response(error_message("Incorrect input parameters"), status=400)
+    return web.json_response(error_message("Incorrect input parameters"), status=400, headers=WEB_HEADERS)
   except TypeError as te:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+    return web.json_response(error_message("Incorrect JSON content type"), status=400, headers=WEB_HEADERS)
   except KeystoreWriteError as kwe:
-    return web.json_response(error_message("Error writing to db"), status=500)
+    return web.json_response(error_message("Error writing to db"), status=500, headers=WEB_HEADERS)
   except InvalidApiKey as iak:
-      return web.json_response(error_message("Unauthorized"), status=401)
+      return web.json_response(error_message("Unauthorized"), status=401, headers=WEB_HEADERS)
   except:
-    return web.json_response(error_message("Error unknown"), status=500)
-  return web.Response(status=201)
+    return web.json_response(error_message("Error unknown"), status=500, headers=WEB_HEADERS)
+  return web.Response(status=201, headers=WEB_HEADERS)
 
 
-@routes.post('/updateConnectionDetails')
+@routes.post('/update-connection-details')
 async def update_connection_details(request):
   request_json = await request.json()
   try:
@@ -84,7 +85,7 @@ async def update_connection_details(request):
   return web.Response(status=202)
 
 
-@routes.post('/popConnectionDetails')
+@routes.post('/pop-connection-details')
 async def pop_connection_details(request):
   try:
     await check_authorization(request)
@@ -96,18 +97,18 @@ async def pop_connection_details(request):
       json_response = {"encryptedPayload": connection_details}
       return web.json_response(json_response)
     else: 
-      return web.Response(status=204)
+      return web.Response(status=204, headers=WEB_HEADERS)
   except KeyError as ke:
-    return web.json_response(error_message("Incorrect input parameters"), status=400)
+    return web.json_response(error_message("Incorrect input parameters"), status=400, headers=WEB_HEADERS)
   except TypeError as te:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+    return web.json_response(error_message("Incorrect JSON content type"), status=400, headers=WEB_HEADERS)
   except InvalidApiKey as iak:
-      return web.json_response(error_message("Unauthorized"), status=401)
+      return web.json_response(error_message("Unauthorized"), status=401, headers=WEB_HEADERS)
   except:
-    return web.json_response(error_message("Error unknown"), status=500)
+    return web.json_response(error_message("Error unknown"), status=500, headers=WEB_HEADERS)
 
 
-@routes.post('/initiateTransaction')
+@routes.post('/initiate-transaction')
 async def initiate_transaction(request):
   try:
     await check_authorization(request)
@@ -126,20 +127,20 @@ async def initiate_transaction(request):
         message_title=notification_title,
         message_body=notification_body,
         data_message=data_message)
-    return web.Response(status=201)
+    return web.Response(status=201, headers=WEB_HEADERS)
   except KeyError as ke:
-    return web.json_response(error_message("Incorrect input parameters"), status=400)
+    return web.json_response(error_message("Incorrect input parameters"), status=400, headers=WEB_HEADERS)
   except TypeError as te:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+    return web.json_response(error_message("Incorrect JSON content type"), status=400, headers=WEB_HEADERS)
   except FirebaseError as fe:
-    return web.json_response(error_message("Error pushing notifications through Firebase"), status=500)
+    return web.json_response(error_message("Error pushing notifications through Firebase"), status=500, headers=WEB_HEADERS)
   except InvalidApiKey as iak:
-      return web.json_response(error_message("Unauthorized"), status=401)
+      return web.json_response(error_message("Unauthorized"), status=401, headers=WEB_HEADERS)
   except:
-      return web.json_response(error_message("Error unknown"), status=500)
+      return web.json_response(error_message("Error unknown"), status=500, headers=WEB_HEADERS)
 
 
-@routes.post('/popTransactionDetails')
+@routes.post('/pop-transaction-details')
 async def pop_transaction_details(request):
   request_json = await request.json()
   try:
