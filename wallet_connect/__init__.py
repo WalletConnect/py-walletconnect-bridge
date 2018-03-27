@@ -25,7 +25,7 @@ def error_message(message):
 
 
 def get_redis_master(app):
-  if app[API][LOCAL]:
+  if app[REDIS][LOCAL]:
     return app[REDIS][SERVICE]
   sentinel = app[REDIS][SERVICE]
   return sentinel.master_for('mymaster')
