@@ -44,7 +44,7 @@ async def check_authorization(request):
     raise InvalidApiKey
 
 
-@routes.put('/createSharedConnection')
+@routes.post('/createSharedConnection')
 async def create_shared_connection(request):
   try:
     await check_authorization(request)
@@ -107,7 +107,7 @@ async def pop_connection_details(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.put('/initiateTransaction')
+@routes.post('/initiateTransaction')
 async def initiate_transaction(request):
   try:
     await check_authorization(request)
