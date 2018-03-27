@@ -17,21 +17,21 @@ async def create_sentinel_connection(event_loop, sentinels):
   return sentinel
 
 
-async def add_shared_connection(conn, token):
+async def add_device_details_request(conn, token):
   key = connection_key(token)
   success = await write(conn, key)
   if not success:
     raise KeystoreWriteError
 
 
-async def update_connection_details(conn, token, encrypted_payload):
+async def update_device_details(conn, token, encrypted_payload):
   key = connection_key(token)
   success = await write(conn, key, encrypted_payload, write_only_if_exists=True)
   if not success:
     raise KeystoreTokenExpiredError
 
 
-async def get_connection_details(conn, token):
+async def get_device_details(conn, token):
   key = connection_key(token)
   details = await conn.get(key)
   if details:
@@ -39,7 +39,7 @@ async def get_connection_details(conn, token):
   return details
 
 
-async def add_transaction(conn, transaction_uuid, device_uuid, encrypted_payload):
+async def add_transaction_details(conn, transaction_uuid, device_uuid, encrypted_payload):
   key = transaction_key(transaction_uuid, device_uuid)
   success = await write(conn, key, encrypted_payload, expiration_in_seconds=300)
   if not success:
