@@ -75,9 +75,9 @@ async def get_transaction_details(conn, transaction_uuid, device_uuid):
     return details
 
 
-async def add_transaction_hash(conn, transaction_uuid, device_uuid, transaction_hash):
+async def update_transaction_status(conn, transaction_uuid, device_uuid, encrypted_payload):
   key = transaction_hash_key(transaction_uuid, device_uuid)
-  success = await write(conn, key, transaction_hash)
+  success = await write(conn, key, encrypted_payload)
   if not success:
     raise KeystoreWriteError("Error writing transaction hash")
 

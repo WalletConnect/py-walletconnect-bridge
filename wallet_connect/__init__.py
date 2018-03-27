@@ -126,7 +126,7 @@ async def add_transaction_details(request):
     # Send push notification
     fcm_token = await keystore.get_device_fcm_token(redis_conn, device_uuid)
     push_notifications_service = request.app[PUSH][SERVICE]
-    data_message = {"transactionUuid": transaction_uuid }
+    data_message = {"deviceUuid": device_uuid, "transactionUuid": transaction_uuid }
     await push_notifications_service.notify_single_device(
         registration_id=fcm_token,
         message_title=notification_title,
@@ -167,15 +167,15 @@ async def get_transaction_details(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.post('/add-transaction-hash')
-async def add_transaction_hash(request):
+@routes.post('/update-transaction-status')
+async def update_transaction_status(request):
   try:
     request_json = await request.json()
     transaction_uuid = request_json['transactionUuid']
     device_uuid = request_json['deviceUuid']
-    transaction_hash = request_json['transactionHash']
+    encrypted_payload = request_json['encryptedPayload']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_transaction_hash(redis_conn, transaction_uuid, device_uuid, transaction_hash)
+    await keystore.update_transaction_status(redis_conn, transaction_uuid, device_uuid, encrypted_payload)
     return web.Response(status=201)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
