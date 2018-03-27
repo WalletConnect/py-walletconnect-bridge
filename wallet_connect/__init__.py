@@ -1,6 +1,6 @@
 import sys
 import argparse
-
+import uuid
 import asyncio
 import aiohttp
 import uvloop
@@ -44,15 +44,15 @@ async def check_authorization(request):
     raise InvalidApiKey
 
 
-@routes.post('/request-device-details')
+@routes.get('/request-device-details')
 async def request_device_details(request):
   try:
     await check_authorization(request)
-    request_json = await request.json()
-    session_token = request_json['sessionToken']
+    session_token = str(uuid.uuid4())
     redis_conn = get_redis_master(request.app)
     await keystore.add_request_for_device_details(redis_conn, session_token)
-    return web.Response(status=201)
+    session_data = {"sessionToken": session_token}
+    return web.json_response(session_data, status=201)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError:
@@ -71,11 +71,13 @@ async def update_device_details(request):
   try:
     session_token = request_json['sessionToken']
     fcm_token = request_json['fcmToken']
-    device_uuid = request_json['deviceUuid']
     encrypted_payload = request_json['encryptedPayload']
     redis_conn = get_redis_master(request.app)
-    await keystore.update_device_details(redis_conn, session_token, device_uuid, fcm_token, encrypted_payload)
-    return web.Response(status=202)
+    device_uuid = str(uuid.uuid4())
+    await keystore.add_device_fcm_token(redis_conn, device_uuid, fcm_token)
+    await keystore.update_device_details(redis_conn, device_uuid, session_token, encrypted_payload)
+    device_uuid_data = {"deviceUuid": device_uuid}
+    return web.json_response(device_uuid_data, status=202)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError:
@@ -93,10 +95,9 @@ async def get_device_details(request):
     request_json = await request.json()
     session_token = request_json['sessionToken']
     redis_conn = get_redis_master(request.app)
-    connection_details = await keystore.get_device_details(redis_conn, session_token)
-    if connection_details:
-      json_response = {"encryptedPayload": connection_details}
-      return web.json_response(json_response)
+    device_details = await keystore.get_device_details(redis_conn, session_token)
+    if device_details:
+      return web.json_response(device_details)
     else: 
       return web.Response(status=204)
   except KeyError:
@@ -114,7 +115,7 @@ async def add_transaction_details(request):
   try:
     await check_authorization(request)
     request_json = await request.json()
-    transaction_uuid = request_json['transactionUuid']
+    transaction_uuid = str(uuid.uuid4())
     device_uuid = request_json['deviceUuid']
     encrypted_payload = request_json['encryptedPayload']
     notification_title = request_json['notificationTitle']
@@ -131,7 +132,7 @@ async def add_transaction_details(request):
         message_title=notification_title,
         message_body=notification_body,
         data_message=data_message)
-    return web.Response(status=201)
+    return web.json_response(data_message, status=201)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError:

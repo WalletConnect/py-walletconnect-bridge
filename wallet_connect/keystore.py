@@ -1,4 +1,5 @@
 import aioredis
+import json
 
 from wallet_connect.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, FirebaseError, InvalidApiKey, KeystoreFcmTokenError
 
@@ -19,19 +20,26 @@ async def create_sentinel_connection(event_loop, sentinels):
 
 async def add_request_for_device_details(conn, session_token):
   key = session_key(session_token)
-  success = await write(conn, key)
+  success = await write(conn, key, '', expiration_in_seconds=5*60)
   if not success:
-    raise KeystoreWriteError("Error adding request for device details")
+    raise KeystoreWriteError('Error adding request for details')
 
 
-async def update_device_details(conn, session_token, device_uuid, fcm_token, encrypted_payload):
-  device_key = device_uuid_key(device_uuid)
-  fcm_success = await write(conn, device_key, fcm_token)
+async def update_device_details(conn, device_uuid, session_token, encrypted_payload):
   key = session_key(session_token)
-  success = await write(conn, key, encrypted_payload, write_only_if_exists=True)
+  data = {'deviceUuid': device_uuid, 'encryptedPayload': encrypted_payload}
+  device_data = json.dumps(data)
+  success = await write(conn, key, device_data, write_only_if_exists=True)
   if not success:
     raise KeystoreTokenExpiredError
 
+
+async def add_device_fcm_token(conn, device_uuid, fcm_token):
+  key = device_uuid_key(device_uuid)
+  success = await write(conn, key, fcm_token, expiration_in_seconds=30*60)
+  if not success:
+    raise KeystoreWriteError("Could not write device FCM token")
+  
 
 async def get_device_fcm_token(conn, device_uuid):
   device_key = device_uuid_key(device_uuid)
@@ -46,7 +54,8 @@ async def get_device_details(conn, session_token):
   details = await conn.get(key)
   if details:
     await conn.delete(key)
-  return details
+    return json.loads(details)
+  return None
 
 
 async def add_transaction_details(conn, transaction_uuid, device_uuid, encrypted_payload):
@@ -90,7 +99,7 @@ def session_key(session_token):
 
 
 def device_uuid_key(device_uuid):
-  return "device_uuid:{}".format(device_uuid)
+  return "device:{}".format(device_uuid)
 
 
 def transaction_key(transaction_uuid, device_uuid):
