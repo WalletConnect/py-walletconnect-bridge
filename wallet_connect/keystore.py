@@ -31,7 +31,7 @@ async def update_connection_details(conn, token, encrypted_payload):
     raise KeystoreTokenExpiredError
 
 
-async def pop_connection_details(conn, token):
+async def get_connection_details(conn, token):
   key = connection_key(token)
   details = await conn.get(key)
   if details:
@@ -46,7 +46,7 @@ async def add_transaction(conn, transaction_uuid, device_uuid, encrypted_payload
     raise KeystoreWriteError
 
 
-async def pop_transaction_details(conn, transaction_uuid, device_uuid):
+async def get_transaction_details(conn, transaction_uuid, device_uuid):
   key = transaction_key(transaction_uuid, device_uuid)
   details = await conn.get(key)
   if not details:
@@ -54,6 +54,21 @@ async def pop_transaction_details(conn, transaction_uuid, device_uuid):
   else:
     await conn.delete(key)
     return details
+
+
+async def add_transaction_hash(conn, transaction_uuid, device_uuid, transaction_hash):
+  key = transaction_hash_key(transaction_uuid, device_uuid)
+  success = await write(conn, key, transaction_hash)
+  if not success:
+    raise KeystoreWriteError
+
+
+async def get_transaction_hash(conn, transaction_uuid, device_uuid):
+  key = transaction_hash_key(transaction_uuid, device_uuid)
+  transaction_hash = await conn.get(key)
+  if transaction_hash:
+    await conn.delete(key)
+  return transaction_hash
 
 
 def api_redis_key(api_key):
@@ -66,6 +81,10 @@ def connection_key(token):
 
 def transaction_key(transaction_uuid, device_uuid):
   return "txn:{}:{}".format(transaction_uuid, device_uuid)
+
+
+def transaction_hash_key(transaction_uuid, device_uuid):
+  return "txnhash:{}:{}".format(transaction_uuid, device_uuid)
 
 
 async def write(conn, key, value='', expiration_in_seconds=120, write_only_if_exists=False):

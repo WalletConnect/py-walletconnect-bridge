@@ -52,6 +52,7 @@ async def create_shared_connection(request):
     token = request_json['token']
     redis_conn = get_redis_master(request.app)
     await keystore.add_shared_connection(redis_conn, token)
+    return web.Response(status=201)
   except KeyError as ke:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError as te:
@@ -62,7 +63,6 @@ async def create_shared_connection(request):
       return web.json_response(error_message("Unauthorized"), status=401)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
-  return web.Response(status=201)
 
 
 @routes.post('/update-connection-details')
@@ -84,14 +84,14 @@ async def update_connection_details(request):
   return web.Response(status=202)
 
 
-@routes.post('/pop-connection-details')
-async def pop_connection_details(request):
+@routes.post('/get-connection-details')
+async def get_connection_details(request):
   try:
     await check_authorization(request)
     request_json = await request.json()
     token = request_json['token']
     redis_conn = get_redis_master(request.app)
-    connection_details = await keystore.pop_connection_details(redis_conn, token)
+    connection_details = await keystore.get_connection_details(redis_conn, token)
     if connection_details:
       json_response = {"encryptedPayload": connection_details}
       return web.json_response(json_response)
@@ -139,14 +139,14 @@ async def initiate_transaction(request):
       return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.post('/pop-transaction-details')
-async def pop_transaction_details(request):
+@routes.post('/get-transaction-details')
+async def get_transaction_details(request):
   request_json = await request.json()
   try:
     transaction_uuid = request_json['transactionUuid']
     device_uuid = request_json['deviceUuid']
     redis_conn = get_redis_master(request.app)
-    details = await keystore.pop_transaction_details(redis_conn, transaction_uuid, device_uuid)
+    details = await keystore.get_transaction_details(redis_conn, transaction_uuid, device_uuid)
     json_response = {"encryptedPayload": details}
     return web.json_response(json_response)
   except KeyError as ke:
@@ -155,6 +155,52 @@ async def pop_transaction_details(request):
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
   except KeystoreFetchError as kfe:
     return web.json_response(error_message("Error retrieving transaction details"), status=500)
+  except:
+    return web.json_response(error_message("Error unknown"), status=500)
+
+
+@routes.post('/add-transaction-hash')
+async def add_transaction_hash(request):
+  try:
+    request_json = await request.json()
+    transaction_uuid = request_json['transactionUuid']
+    device_uuid = request_json['deviceUuid']
+    transaction_hash = request_json['transactionHash']
+    redis_conn = get_redis_master(request.app)
+    await keystore.add_transaction_hash(redis_conn, transaction_uuid, device_uuid, transaction_hash)
+    return web.Response(status=201)
+  except KeyError as ke:
+    return web.json_response(error_message("Incorrect input parameters"), status=400)
+  except TypeError as te:
+    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+  except FirebaseError as fe:
+    return web.json_response(error_message("Error pushing notifications through Firebase"), status=500)
+  except InvalidApiKey as iak:
+      return web.json_response(error_message("Unauthorized"), status=401)
+  except:
+      return web.json_response(error_message("Error unknown"), status=500)
+
+
+@routes.post('/get-transaction-hash')
+async def get_transaction_hash(request):
+  try:
+    await check_authorization(request)
+    request_json = await request.json()
+    transaction_uuid = request_json['transactionUuid']
+    device_uuid = request_json['deviceUuid']
+    redis_conn = get_redis_master(request.app)
+    transaction_hash = await keystore.get_transaction_hash(redis_conn, transaction_uuid, device_uuid)
+    if transaction_hash:
+      json_response = {"transactionHash": transaction_hash}
+      return web.json_response(json_response)
+    else: 
+      return web.Response(status=204)
+  except KeyError as ke:
+    return web.json_response(error_message("Incorrect input parameters"), status=400)
+  except TypeError as te:
+    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+  except InvalidApiKey as iak:
+      return web.json_response(error_message("Unauthorized"), status=401)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
 
