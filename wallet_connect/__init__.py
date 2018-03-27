@@ -44,7 +44,7 @@ async def check_authorization(request):
     raise InvalidApiKey
 
 
-@routes.put('/create_shared_connection')
+@routes.put('/createSharedConnection')
 async def create_shared_connection(request):
   try:
     await check_authorization(request)
@@ -65,12 +65,12 @@ async def create_shared_connection(request):
   return web.Response(status=201)
 
 
-@routes.post('/update_connection_details')
+@routes.post('/updateConnectionDetails')
 async def update_connection_details(request):
   request_json = await request.json()
   try:
     token = request_json['token']
-    encrypted_payload = request_json['encrypted_payload']
+    encrypted_payload = request_json['encryptedPayload']
     redis_conn = get_redis_master(request.app)
     await keystore.update_connection_details(redis_conn, token, encrypted_payload)
   except KeyError as ke:
@@ -84,7 +84,7 @@ async def update_connection_details(request):
   return web.Response(status=202)
 
 
-@routes.post('/pop_connection_details')
+@routes.post('/popConnectionDetails')
 async def pop_connection_details(request):
   try:
     await check_authorization(request)
@@ -93,7 +93,7 @@ async def pop_connection_details(request):
     redis_conn = get_redis_master(request.app)
     connection_details = await keystore.pop_connection_details(redis_conn, token)
     if connection_details:
-      json_response = {"encrypted_payload": connection_details}
+      json_response = {"encryptedPayload": connection_details}
       return web.json_response(json_response)
     else: 
       return web.Response(status=204)
@@ -107,19 +107,19 @@ async def pop_connection_details(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.put('/initiate_transaction')
+@routes.put('/initiateTransaction')
 async def initiate_transaction(request):
   try:
     await check_authorization(request)
     request_json = await request.json()
-    transaction_uuid = request_json['transaction_uuid']
-    device_uuid = request_json['device_uuid']
-    encrypted_payload = request_json['encrypted_payload']
-    notification_title = request_json['notification_title']
-    notification_body = request_json['notification_body']
+    transaction_uuid = request_json['transactionUuid']
+    device_uuid = request_json['deviceUuid']
+    encrypted_payload = request_json['encryptedPayload']
+    notification_title = request_json['notificationTitle']
+    notification_body = request_json['notificationBody']
     redis_conn = get_redis_master(request.app)
     await keystore.add_transaction(redis_conn, transaction_uuid, device_uuid, encrypted_payload)
-    data_message = {"transaction_uuid": transaction_uuid }
+    data_message = {"transactionUuid": transaction_uuid }
     push_notifications_service = request.app[PUSH][SERVICE]
     await push_notifications_service.notify_single_device(
         registration_id=device_uuid,
@@ -139,15 +139,15 @@ async def initiate_transaction(request):
       return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.post('/pop_transaction_details')
+@routes.post('/popTransactionDetails')
 async def pop_transaction_details(request):
   request_json = await request.json()
   try:
-    transaction_uuid = request_json['transaction_uuid']
-    device_uuid = request_json['device_uuid']
+    transaction_uuid = request_json['transactionUuid']
+    device_uuid = request_json['deviceUuid']
     redis_conn = get_redis_master(request.app)
     details = await keystore.pop_transaction_details(redis_conn, transaction_uuid, device_uuid)
-    json_response = {"encrypted_payload": details}
+    json_response = {"encryptedPayload": details}
     return web.json_response(json_response)
   except KeyError as ke:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
