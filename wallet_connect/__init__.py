@@ -19,7 +19,6 @@ PUSH='io.wallet.connect.push_notifications'
 KEY='key'
 LOCAL='local'
 SERVICE='service'
-WEB_HEADERS={'ACCESS-CONTROL-ALLOW-ORIGIN': '*'}
 
 def error_message(message):
   return {"message": message}
@@ -54,16 +53,16 @@ async def create_shared_connection(request):
     redis_conn = get_redis_master(request.app)
     await keystore.add_shared_connection(redis_conn, token)
   except KeyError as ke:
-    return web.json_response(error_message("Incorrect input parameters"), status=400, headers=WEB_HEADERS)
+    return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError as te:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400, headers=WEB_HEADERS)
+    return web.json_response(error_message("Incorrect JSON content type"), status=400)
   except KeystoreWriteError as kwe:
-    return web.json_response(error_message("Error writing to db"), status=500, headers=WEB_HEADERS)
+    return web.json_response(error_message("Error writing to db"), status=500)
   except InvalidApiKey as iak:
-      return web.json_response(error_message("Unauthorized"), status=401, headers=WEB_HEADERS)
+      return web.json_response(error_message("Unauthorized"), status=401)
   except:
-    return web.json_response(error_message("Error unknown"), status=500, headers=WEB_HEADERS)
-  return web.Response(status=201, headers=WEB_HEADERS)
+    return web.json_response(error_message("Error unknown"), status=500)
+  return web.Response(status=201)
 
 
 @routes.post('/update-connection-details')
@@ -97,15 +96,15 @@ async def pop_connection_details(request):
       json_response = {"encryptedPayload": connection_details}
       return web.json_response(json_response)
     else: 
-      return web.Response(status=204, headers=WEB_HEADERS)
+      return web.Response(status=204)
   except KeyError as ke:
-    return web.json_response(error_message("Incorrect input parameters"), status=400, headers=WEB_HEADERS)
+    return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError as te:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400, headers=WEB_HEADERS)
+    return web.json_response(error_message("Incorrect JSON content type"), status=400)
   except InvalidApiKey as iak:
-      return web.json_response(error_message("Unauthorized"), status=401, headers=WEB_HEADERS)
+      return web.json_response(error_message("Unauthorized"), status=401)
   except:
-    return web.json_response(error_message("Error unknown"), status=500, headers=WEB_HEADERS)
+    return web.json_response(error_message("Error unknown"), status=500)
 
 
 @routes.post('/initiate-transaction')
@@ -127,17 +126,17 @@ async def initiate_transaction(request):
         message_title=notification_title,
         message_body=notification_body,
         data_message=data_message)
-    return web.Response(status=201, headers=WEB_HEADERS)
+    return web.Response(status=201)
   except KeyError as ke:
-    return web.json_response(error_message("Incorrect input parameters"), status=400, headers=WEB_HEADERS)
+    return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError as te:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400, headers=WEB_HEADERS)
+    return web.json_response(error_message("Incorrect JSON content type"), status=400)
   except FirebaseError as fe:
-    return web.json_response(error_message("Error pushing notifications through Firebase"), status=500, headers=WEB_HEADERS)
+    return web.json_response(error_message("Error pushing notifications through Firebase"), status=500)
   except InvalidApiKey as iak:
-      return web.json_response(error_message("Unauthorized"), status=401, headers=WEB_HEADERS)
+      return web.json_response(error_message("Unauthorized"), status=401)
   except:
-      return web.json_response(error_message("Error unknown"), status=500, headers=WEB_HEADERS)
+      return web.json_response(error_message("Error unknown"), status=500)
 
 
 @routes.post('/pop-transaction-details')
