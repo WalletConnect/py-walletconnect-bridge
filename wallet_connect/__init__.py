@@ -266,6 +266,8 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--redis-local', action='store_true')
   parser.add_argument('--api-local', action='store_true')
+  parser.add_argument('--host', type=str, default='localhost')
+  parser.add_argument('--port', type=int, default=8080)
   args = parser.parse_args()
 
   app = web.Application()
@@ -278,7 +280,7 @@ def main():
   app.on_cleanup.append(close_client_session_connection)
   app.router.add_routes(routes)
   asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-  web.run_app(app, port=8081)
+  web.run_app(app, host=args.host, port=args.port)
 
 
 if __name__ == '__main__':
