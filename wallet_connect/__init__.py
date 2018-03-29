@@ -31,7 +31,7 @@ def get_redis_master(app):
 
 @routes.get('/hello')
 async def hello(request):
-  return web.Response(text="hello world")
+  return web.Response(text="hello world, this is Wallet Connect")
 
 
 @routes.get('/request-device-details')
