@@ -34,10 +34,10 @@ async def update_device_details(conn, device_uuid, session_token, encrypted_payl
     raise KeystoreTokenExpiredError
 
 
-async def add_device_fcm_data(conn, device_uuid, wallet_webhook, fcm_key):
+async def add_device_fcm_data(conn, device_uuid, wallet_webhook, fcm_token):
   # TODO what if we want wallet_webhook to be null?
   key = device_uuid_key(device_uuid)
-  data = {'fcm_key': fcm_key, 'wallet_webhook': wallet_webhook}
+  data = {'fcm_token': fcm_token, 'wallet_webhook': wallet_webhook}
   fcm_data = json.dumps(data)
   success = await write(conn, key, fcm_data, expiration_in_seconds=24*60*60)
   if not success:

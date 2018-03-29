@@ -57,12 +57,12 @@ async def update_device_details(request):
   request_json = await request.json()
   try:
     session_token = request_json['sessionToken']
-    fcm_key = request_json['fcmKey']
+    fcm_token = request_json['fcmToken']
     wallet_webhook = request_json['walletWebhook']
     encrypted_payload = request_json['encryptedPayload']
     redis_conn = get_redis_master(request.app)
     device_uuid = str(uuid.uuid4())
-    await keystore.add_device_fcm_data(redis_conn, device_uuid, wallet_webhook, fcm_key)
+    await keystore.add_device_fcm_data(redis_conn, device_uuid, wallet_webhook, fcm_token)
     await keystore.update_device_details(redis_conn, device_uuid, session_token, encrypted_payload)
     device_uuid_data = {"deviceUuid": device_uuid}
     return web.json_response(device_uuid_data, status=202)
@@ -188,12 +188,12 @@ async def get_transaction_status(request):
 
 async def send_webhook_request(session, bridge_server, fcm_data, transaction_uuid, notification_details):
   bridge_transaction_handler = '{}/get-transaction-details'.format(bridge_server)
-  fcm_key = fcm_data['fcm_key']
+  fcm_token = fcm_data['fcm_token']
   wallet_webhook = fcm_data['wallet_webhook']
   payload = {
     'bridgeWebhook': bridge_transaction_handler,
     'transactionUuid': transaction_uuid,
-    'fcmKey': fcm_key,
+    'fcmToken': fcm_token,
     'notificationDetails': notification_details
   }
   headers = {'Content-Type': 'application/json'}
