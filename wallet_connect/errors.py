@@ -16,7 +16,3 @@ class KeystoreFcmTokenError(Exception):
 
 class KeystoreFetchError(Exception):
   pass
-
-
-class InvalidApiKey(Exception):
-  pass

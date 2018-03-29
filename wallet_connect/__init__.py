@@ -8,14 +8,12 @@ from aiohttp import web
 import boto3
 
 import wallet_connect.keystore
-from wallet_connect.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError, KeystoreTokenExpiredError, InvalidApiKey, KeystoreFcmTokenError
+from wallet_connect.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError, KeystoreTokenExpiredError, KeystoreFcmTokenError
 
 routes = web.RouteTableDef()
 
-API='io.wallet.connect.api_gateway'
 REDIS='io.wallet.connect.redis'
 SESSION='io.wallet.connect.session'
-KEY='key'
 LOCAL='local'
 SERVICE='service'
 
@@ -35,18 +33,9 @@ async def hello(request):
   return web.Response(text="hello world")
 
 
-async def check_authorization(request):
-  if 'Authorization' not in request.headers:
-    raise InvalidApiKey
-  api_key = request.headers['Authorization']
-  if request.app[API][KEY] != api_key:
-    raise InvalidApiKey
-
-
 @routes.get('/request-device-details')
 async def request_device_details(request):
   try:
-    await check_authorization(request)
     session_token = str(uuid.uuid4())
     redis_conn = get_redis_master(request.app)
     await keystore.add_request_for_device_details(redis_conn, session_token)
@@ -58,8 +47,6 @@ async def request_device_details(request):
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
   except KeystoreWriteError:
     return web.json_response(error_message("Error writing to db"), status=500)
-  except InvalidApiKey:
-      return web.json_response(error_message("Unauthorized"), status=401)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
 
@@ -91,7 +78,6 @@ async def update_device_details(request):
 @routes.post('/get-device-details')
 async def get_device_details(request):
   try:
-    await check_authorization(request)
     request_json = await request.json()
     session_token = request_json['sessionToken']
     redis_conn = get_redis_master(request.app)
@@ -104,8 +90,6 @@ async def get_device_details(request):
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
-  except InvalidApiKey:
-      return web.json_response(error_message("Unauthorized"), status=401)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
 
@@ -113,7 +97,6 @@ async def get_device_details(request):
 @routes.post('/add-transaction-details')
 async def add_transaction_details(request):
   try:
-    await check_authorization(request)
     request_json = await request.json()
     transaction_uuid = str(uuid.uuid4())
     device_uuid = request_json['deviceUuid']
@@ -138,8 +121,6 @@ async def add_transaction_details(request):
     return web.json_response(error_message("Error finding FCM token for device"), status=500)
   except FirebaseError:
     return web.json_response(error_message("Error pushing notifications through Firebase"), status=500)
-  except InvalidApiKey:
-      return web.json_response(error_message("Unauthorized"), status=401)
   except:
       return web.json_response(error_message("Error unknown"), status=500)
 
@@ -182,8 +163,6 @@ async def update_transaction_status(request):
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
   except FirebaseError:
     return web.json_response(error_message("Error pushing notifications through Firebase"), status=500)
-  except InvalidApiKey:
-      return web.json_response(error_message("Unauthorized"), status=401)
   except:
       return web.json_response(error_message("Error unknown"), status=500)
 
@@ -191,7 +170,6 @@ async def update_transaction_status(request):
 @routes.post('/get-transaction-status')
 async def get_transaction_status(request):
   try:
-    await check_authorization(request)
     request_json = await request.json()
     transaction_uuid = request_json['transactionUuid']
     device_uuid = request_json['deviceUuid']
@@ -205,8 +183,6 @@ async def get_transaction_status(request):
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
-  except InvalidApiKey:
-      return web.json_response(error_message("Unauthorized"), status=401)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
 
@@ -246,13 +222,6 @@ async def initialize_keystore(app):
                                                            sentinels=sentinels.split(','))
 
 
-async def initialize_api_gateway(app):
-  if app[API][LOCAL]:
-    app[API][KEY] = 'dummy_api_key'
-  else:
-    app[API][KEY] = get_kms_parameter('wallet-connect-manager-api-key')
-
-
 async def close_keystore(app):
   app[REDIS][SERVICE].close()
   await app[REDIS][SERVICE].wait_closed()
@@ -265,17 +234,14 @@ async def close_client_session_connection(app):
 def main(): 
   parser = argparse.ArgumentParser()
   parser.add_argument('--redis-local', action='store_true')
-  parser.add_argument('--api-local', action='store_true')
   parser.add_argument('--host', type=str, default='localhost')
   parser.add_argument('--port', type=int, default=8080)
   args = parser.parse_args()
 
   app = web.Application()
-  app[API] = {LOCAL: args.api_local}
   app[REDIS] = {LOCAL: args.redis_local}
   app.on_startup.append(initialize_client_session)
   app.on_startup.append(initialize_keystore)
-  app.on_startup.append(initialize_api_gateway)
   app.on_cleanup.append(close_keystore)
   app.on_cleanup.append(close_client_session_connection)
   app.router.add_routes(routes)
