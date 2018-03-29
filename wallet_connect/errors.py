@@ -1,4 +1,4 @@
-class FirebaseError(Exception):
+class WalletConnectPushError(Exception):
   pass
 
 

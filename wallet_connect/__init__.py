@@ -8,12 +8,13 @@ from aiohttp import web
 import boto3
 
 import wallet_connect.keystore
-from wallet_connect.errors import KeystoreWriteError, KeystoreFetchError, FirebaseError, KeystoreTokenExpiredError, KeystoreFcmTokenError
+from wallet_connect.errors import KeystoreWriteError, KeystoreFetchError, WalletConnectPushError, KeystoreTokenExpiredError, KeystoreFcmTokenError
 
 routes = web.RouteTableDef()
 
-REDIS='io.wallet.connect.redis'
-SESSION='io.wallet.connect.session'
+REDIS='org.wallet.connect.redis'
+BRIDGE='org.wallet.connect.bridge'
+SESSION='org.wallet.connect.session'
 LOCAL='local'
 SERVICE='service'
 
@@ -100,17 +101,17 @@ async def add_transaction_details(request):
     request_json = await request.json()
     transaction_uuid = str(uuid.uuid4())
     device_uuid = request_json['deviceUuid']
-    encrypted_payload = request_json['encryptedPayload']
+    encrypted_transaction_details = request_json['encryptedTransactionDetails']
     # TODO could be optional notification details
-    notification_title = request_json['notificationTitle']
-    notification_body = request_json['notificationBody']
+    notification_details = request_json['notificationDetails']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_transaction_details(redis_conn, transaction_uuid, device_uuid, encrypted_payload)
+    await keystore.add_transaction_details(redis_conn, transaction_uuid, device_uuid, encrypted_transaction_details)
 
     # Notify wallet webhook
     fcm_data = await keystore.get_device_fcm_data(redis_conn, device_uuid)
     session = request.app[SESSION]
-    await send_webhook_request(session, fcm_data, transaction_uuid, notification_title, notification_body)
+    bridge_server = request.app[BRIDGE]
+    await send_webhook_request(session, bridge_server, fcm_data, transaction_uuid, notification_details)
     data_message = {"transactionUuid": transaction_uuid}
     return web.json_response(data_message, status=201)
   except KeyError:
@@ -119,8 +120,8 @@ async def add_transaction_details(request):
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
   except KeystoreFcmTokenError:
     return web.json_response(error_message("Error finding FCM token for device"), status=500)
-  except FirebaseError:
-    return web.json_response(error_message("Error pushing notifications through Firebase"), status=500)
+  except WalletConnectPushError:
+    return web.json_response(error_message("Error sending message to wallet connect push endpoint"), status=500)
   except:
       return web.json_response(error_message("Error unknown"), status=500)
 
@@ -161,8 +162,6 @@ async def update_transaction_status(request):
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
-  except FirebaseError:
-    return web.json_response(error_message("Error pushing notifications through Firebase"), status=500)
   except:
       return web.json_response(error_message("Error unknown"), status=500)
 
@@ -187,20 +186,20 @@ async def get_transaction_status(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-async def send_webhook_request(session, fcm_data, transaction_uuid, notification_title,
-                               notification_body):
+async def send_webhook_request(session, bridge_server, fcm_data, transaction_uuid, notification_details):
+  bridge_transaction_handler = '{}/get-transaction-details'.format(bridge_server)
   fcm_key = fcm_data['fcm_key']
   wallet_webhook = fcm_data['wallet_webhook']
   payload = {
+    'bridgeWebhook': bridge_transaction_handler,
     'transactionUuid': transaction_uuid,
     'fcmKey': fcm_key,
-    'notificationTitle': notification_title,
-    'notificationBody': notification_body
+    'notificationDetails': notification_details
   }
   headers = {'Content-Type': 'application/json'}
   response = await session.post(wallet_webhook, json=payload, headers=headers)
   if response.status != 200:
-    raise FirebaseError("Wallet webhook error")
+    raise WalletConnectPushError
 
 
 def get_kms_parameter(param_name):
@@ -234,11 +233,13 @@ async def close_client_session_connection(app):
 def main(): 
   parser = argparse.ArgumentParser()
   parser.add_argument('--redis-local', action='store_true')
+  parser.add_argument('--bridge-host', type=str, default=None)
   parser.add_argument('--host', type=str, default='localhost')
   parser.add_argument('--port', type=int, default=8080)
   args = parser.parse_args()
 
   app = web.Application()
+  app[BRIDGE] = args.bridge_host if args.bridge_host else '{}:{}'.format(args.host, args.port)
   app[REDIS] = {LOCAL: args.redis_local}
   app.on_startup.append(initialize_client_session)
   app.on_startup.append(initialize_keystore)
