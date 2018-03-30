@@ -110,7 +110,7 @@ async def add_transaction_details(request):
     print('get device fcm')
     session = request.app[SESSION]
     bridge_server = request.app[BRIDGE]
-    await send_webhook_request(session, bridge_server, fcm_data, transaction_uuid, notification_details)
+    await send_webhook_request(session, fcm_data, device_uuid, transaction_uuid, notification_details)
     data_message = {"transactionUuid": transaction_uuid}
     return web.json_response(data_message, status=201)
   except KeyError:
@@ -183,10 +183,11 @@ async def get_transaction_status(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-async def send_webhook_request(session, fcm_data, transaction_uuid, notification_details):
+async def send_webhook_request(session, fcm_data, device_uuid, transaction_uuid, notification_details):
   fcm_token = fcm_data['fcm_token']
   wallet_webhook = fcm_data['wallet_webhook']
   payload = {
+    'deviceUuid': device_uuid,
     'transactionUuid': transaction_uuid,
     'fcmToken': fcm_token,
     'notificationDetails': notification_details
