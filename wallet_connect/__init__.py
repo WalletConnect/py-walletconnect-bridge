@@ -107,9 +107,7 @@ async def add_transaction_details(request):
     await keystore.add_transaction_details(redis_conn, transaction_uuid, device_uuid, encrypted_transaction_details)
     # Notify wallet webhook
     fcm_data = await keystore.get_device_fcm_data(redis_conn, device_uuid)
-    print('get device fcm')
     session = request.app[SESSION]
-    bridge_server = request.app[BRIDGE]
     await send_webhook_request(session, fcm_data, device_uuid, transaction_uuid, notification_details)
     data_message = {"transactionUuid": transaction_uuid}
     return web.json_response(data_message, status=201)
