@@ -59,11 +59,11 @@ async def update_device_details(request):
     session_token = request_json['sessionToken']
     fcm_token = request_json['fcmToken']
     wallet_webhook = request_json['walletWebhook']
-    encrypted_payload = request_json['encryptedPayload']
+    encrypted_device_details = request_json['encryptedDeviceDetails']
     redis_conn = get_redis_master(request.app)
     device_uuid = str(uuid.uuid4())
     await keystore.add_device_fcm_data(redis_conn, device_uuid, wallet_webhook, fcm_token)
-    await keystore.update_device_details(redis_conn, device_uuid, session_token, encrypted_payload)
+    await keystore.update_device_details(redis_conn, device_uuid, session_token, encrypted_device_details)
     device_uuid_data = {"deviceUuid": device_uuid}
     return web.json_response(device_uuid_data, status=202)
   except KeyError:
@@ -134,7 +134,7 @@ async def get_transaction_details(request):
     device_uuid = request_json['deviceUuid']
     redis_conn = get_redis_master(request.app)
     details = await keystore.get_transaction_details(redis_conn, transaction_uuid, device_uuid)
-    json_response = {"encryptedPayload": details}
+    json_response = {"encryptedTransactionDetails": details}
     return web.json_response(json_response)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -152,11 +152,9 @@ async def update_transaction_status(request):
     request_json = await request.json()
     transaction_uuid = request_json['transactionUuid']
     device_uuid = request_json['deviceUuid']
-    transaction_status = request_json['transactionStatus']
-    transaction_hash = request_json['transactionHash'] if ('transactionHash' in request_json) else None
+    encrypted_transaction_status = request_json['encryptedTransactionStatus']
     redis_conn = get_redis_master(request.app)
-    await keystore.update_transaction_status(redis_conn, transaction_uuid, device_uuid,
-                                             transaction_status, transaction_hash)
+    await keystore.update_transaction_status(redis_conn, transaction_uuid, device_uuid, encrypted_transaction_status)
     return web.Response(status=201)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)

@@ -25,9 +25,9 @@ async def add_request_for_device_details(conn, session_token):
     raise KeystoreWriteError('Error adding request for details')
 
 
-async def update_device_details(conn, device_uuid, session_token, encrypted_payload):
+async def update_device_details(conn, device_uuid, session_token, encrypted_device_details):
   key = session_key(session_token)
-  data = {'deviceUuid': device_uuid, 'encryptedPayload': encrypted_payload}
+  data = {'deviceUuid': device_uuid, 'encryptedDeviceDetails': encrypted_device_details}
   device_data = json.dumps(data)
   success = await write(conn, key, device_data, write_only_if_exists=True)
   if not success:
@@ -61,10 +61,10 @@ async def get_device_details(conn, session_token):
   return None
 
 
-async def add_transaction_details(conn, transaction_uuid, device_uuid, encrypted_payload):
+async def add_transaction_details(conn, transaction_uuid, device_uuid, encrypted_transaction_details):
   key = transaction_key(transaction_uuid, device_uuid)
   # TODO how long should this be here for?
-  success = await write(conn, key, encrypted_payload, expiration_in_seconds=60*60)
+  success = await write(conn, key, encrypted_transaction_details, expiration_in_seconds=60*60)
   if not success:
     raise KeystoreWriteError("Error adding transaction details")
 
@@ -79,18 +79,17 @@ async def get_transaction_details(conn, transaction_uuid, device_uuid):
     return details
 
 
-async def update_transaction_status(conn, transaction_uuid, device_uuid, transaction_status, transaction_hash):
+async def update_transaction_status(conn, transaction_uuid, device_uuid, encrypted_transaction_status):
   key = transaction_hash_key(transaction_uuid, device_uuid)
-  data = {'transaction_status': transaction_status, 'transaction_hash': transaction_hash}
-  status_details = json.dumps(data)
+  status_details = json.dumps(encrypted_transaction_status)
   success = await write(conn, key, status_details)
 
 
 async def get_transaction_status(conn, transaction_uuid, device_uuid):
   key = transaction_hash_key(transaction_uuid, device_uuid)
   details = await conn.get(key)
-  transaction_status = json.loads(details)
-  return transaction_status
+  encrypted_transaction_status = json.loads(details)
+  return encrypted_transaction_status
 
 
 def api_redis_key(api_key):
