@@ -13,7 +13,6 @@ from wallet_connect.errors import KeystoreWriteError, KeystoreFetchError, Wallet
 routes = web.RouteTableDef()
 
 REDIS='org.wallet.connect.redis'
-BRIDGE='org.wallet.connect.bridge'
 SESSION='org.wallet.connect.session'
 LOCAL='local'
 SERVICE='service'
@@ -106,9 +105,9 @@ async def add_transaction_details(request):
     notification_details = request_json['notificationDetails']
     redis_conn = get_redis_master(request.app)
     await keystore.add_transaction_details(redis_conn, transaction_uuid, device_uuid, encrypted_transaction_details)
-
     # Notify wallet webhook
     fcm_data = await keystore.get_device_fcm_data(redis_conn, device_uuid)
+    print('get device fcm')
     session = request.app[SESSION]
     bridge_server = request.app[BRIDGE]
     await send_webhook_request(session, bridge_server, fcm_data, transaction_uuid, notification_details)
@@ -184,12 +183,10 @@ async def get_transaction_status(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-async def send_webhook_request(session, bridge_server, fcm_data, transaction_uuid, notification_details):
-  bridge_transaction_handler = '{}/get-transaction-details'.format(bridge_server)
+async def send_webhook_request(session, fcm_data, transaction_uuid, notification_details):
   fcm_token = fcm_data['fcm_token']
   wallet_webhook = fcm_data['wallet_webhook']
   payload = {
-    'bridgeWebhook': bridge_transaction_handler,
     'transactionUuid': transaction_uuid,
     'fcmToken': fcm_token,
     'notificationDetails': notification_details
@@ -231,13 +228,11 @@ async def close_client_session_connection(app):
 def main(): 
   parser = argparse.ArgumentParser()
   parser.add_argument('--redis-local', action='store_true')
-  parser.add_argument('--bridge-host', type=str, default=None)
   parser.add_argument('--host', type=str, default='localhost')
   parser.add_argument('--port', type=int, default=8080)
   args = parser.parse_args()
 
   app = web.Application()
-  app[BRIDGE] = args.bridge_host if args.bridge_host else '{}:{}'.format(args.host, args.port)
   app[REDIS] = {LOCAL: args.redis_local}
   app.on_startup.append(initialize_client_session)
   app.on_startup.append(initialize_keystore)
