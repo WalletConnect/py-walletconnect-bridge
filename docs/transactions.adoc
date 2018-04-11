@@ -1,0 +1,18 @@
+:imagesdir: images
+image::wallet_addresses_flow.png[]
+
+=== Dapp
+. Generates unsigned transaction details
+. Encrypts transaction details with session private key
+. Pushes unsigned transaction details to bridge with a unique transaction UUID
+. Begins long-polling bridge server for the transaction hash
+
+If a wallet webhook has been provided, the bridge will send details to the wallet webhook, which can optionally send push notifications to the mobile wallet.
+
+=== Mobile wallet
+. If push notification received with transaction UUID, requests transaction details from bridge server using transaction UUID
+. Otherwise, requests list of transaction details from bridge server using unique session token
+. Decrypts transaction details with session private key
+. Displays full transaction details to user and requests TouchID approval
+. Signs transaction and executes
+. Pushes transaction hash to bridge server
