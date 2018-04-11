@@ -1,7 +1,7 @@
 The initial flow is to connect the dapp with the mobile wallet using a QR code, and for the dapp to receive the public wallet addresses of the wallet.
 
 :imagesdir: images
-image::wallet_addresses_flow.png[]
+image::walletconnect-public-addresses-diagram.png[]
 
 === Dapp:
 . Selects a bridge server to use

@@ -1,5 +1,5 @@
 :imagesdir: images
-image::wallet_addresses_flow.png[]
+image::walletconnect-transaction-diagram.png[]
 
 === Dapp
 . Generates unsigned transaction details
