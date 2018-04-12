@@ -82,7 +82,7 @@ async def get_device_details(request):
     device_details = await keystore.get_device_details(redis_conn, session_token)
     if device_details:
       session_data = {"encryptedDeviceDetails": device_details}
-      return web.json_response(device_details)
+      return web.json_response(session_data)
     else: 
       return web.Response(status=204)
   except KeyError:
@@ -147,9 +147,10 @@ async def update_transaction_status(request):
   try:
     request_json = await request.json()
     transaction_uuid = request_json['transactionUuid']
+    session_token = request_json['sessionToken']
     encrypted_transaction_status = request_json['encryptedTransactionStatus']
     redis_conn = get_redis_master(request.app)
-    await keystore.update_transaction_status(redis_conn, transaction_uuid, encrypted_transaction_status)
+    await keystore.update_transaction_status(redis_conn, transaction_uuid, session_token, encrypted_transaction_status)
     return web.Response(status=201)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -164,8 +165,9 @@ async def get_transaction_status(request):
   try:
     request_json = await request.json()
     transaction_uuid = request_json['transactionUuid']
+    session_token = request_json['sessionToken']
     redis_conn = get_redis_master(request.app)
-    transaction_status = await keystore.get_transaction_status(redis_conn, transaction_uuid)
+    transaction_status = await keystore.get_transaction_status(redis_conn, transaction_uuid, session_token)
     if transaction_status:
       json_response = {"encryptedTransactionStatus": transaction_status}
       return web.json_response(json_response)
