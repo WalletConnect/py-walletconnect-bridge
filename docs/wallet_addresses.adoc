@@ -16,4 +16,4 @@ image::walletconnect-public-addresses-diagram.png[]
 .. wallet push server webhook (optional)
 .. wallet push notification token (optional)
 
-The mobile wallet's push notification token is stored temporarily on the bridge server associated with the unique session token. The dapp never gains access to the wallet's FCM token.
+The mobile wallet's push notification token is stored temporarily on the bridge server associated with the unique session token. The dapp never gains access to the wallet's push notification token.
