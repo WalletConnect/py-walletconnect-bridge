@@ -1,18 +1,12 @@
 :imagesdir: images
 image::walletconnect-transaction-diagram.png[]
 
-=== Dapp
-. Generates unsigned transaction details
-. Encrypts transaction details with session private key
-. Pushes unsigned transaction details to bridge with a unique transaction UUID
-. Begins long-polling bridge server for the transaction hash
-
-If a wallet webhook has been provided, the bridge will send details to the wallet webhook, which can optionally send push notifications to the mobile wallet.
-
-=== Mobile wallet
-. If push notification received with transaction UUID, requests transaction details from bridge server using transaction UUID
-. Otherwise, requests list of transaction details from bridge server using unique session token
-. Decrypts transaction details with session private key
-. Displays full transaction details to user and requests TouchID approval
-. Signs transaction and executes
-. Pushes transaction hash to bridge server
+. Dapp encrypts unsigned transaction with session private key and pushes to bridge server with session token
+. Bridge server generates a transaction uuid, stores in Redis along with encrypted unsigned transaction, and returns transaction uuid
+. If a wallet webhook has been provided, the bridge server will send push notification details, the transaction uuid, and the push notification token to the push server
+. Push server sends push notifications to the mobile wallet using its private push notification server key as well as the user's push notification token
+. Dapp begins long-polling bridge server for the transaction hash using the transaction uuid
+. Mobile wallet requests encrypted unsigned transactions from bridge server using transaction UUID if push notification received (or requests list of unsigned transactions from bridge server using session token if no push notification supported)
+. Bridge server returns encrypted transaction details
+. Mobile wallet decrypts transaction details with session private key, displays full transaction details to user, requests TouchID approval, signs transaction and executes, pushes status and transaction hash to bridge server
+. Dapp receives status and transaction hash
