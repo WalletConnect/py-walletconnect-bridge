@@ -3,23 +3,17 @@ The initial flow is to connect the dapp with the mobile wallet using a QR code, 
 :imagesdir: images
 image::walletconnect-public-addresses-diagram.png[]
 
-=== Dapp:
-. Selects a bridge server to use
-. Requests a unique session token from the bridge server
-. Generates a unique private key for this session
-. Creates a pairing QR code which holds:
+. Dapp selects a bridge server to use and requests a unique session token from the bridge server
+. Bridge server generates a unique session token, stores in Redis as session:<token> key with no value, and returns session token
+. Dapp generates a unique private key for this session and creates a pairing QR code which holds:
 .. bridge server domain
 .. unique session token
 .. dapp's session private key
-. Begins long-polling the bridge server for the connecting mobile wallet's details using the unique session token
-
-=== Mobile wallet:
-. Scans in the QR code
-. Encrypts public wallet address(es) and its own public key with dapp's session private key
-. Pushes following info to bridge:
+. Dapp begins long-polling the bridge server for the connecting mobile wallet's details using the unique session token
+. After mobile wallet scans in the QR code, encrypts public wallet address(es) with session private key, then pushes the following info to bridge server:
 .. unique session token
 .. encrypted public wallet address(es)
 .. wallet push server webhook (optional)
-.. FCM token (optional)
+.. wallet push notification token (optional)
 
-The mobile wallet's FCM token is stored temporarily on the bridge server associated with the unique session token. The dapp never gains access to the wallet's FCM token.
+The mobile wallet's push notification token is stored temporarily on the bridge server associated with the unique session token. The dapp never gains access to the wallet's FCM token.
