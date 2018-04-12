@@ -4,13 +4,13 @@ The initial flow is to connect the dapp with the mobile wallet using a QR code, 
 image::walletconnect-public-addresses-diagram.png[]
 
 . Dapp selects a bridge server to use and requests a unique session token from the bridge server
-. Bridge server generates a unique session token, stores in Redis as session:<token> key with no value, and returns session token
+. Bridge server generates a unique session token, stores in Redis, and returns session token
 . Dapp generates a unique private key for this session and creates a pairing QR code which holds:
 .. bridge server domain
 .. unique session token
-.. dapp's session private key
+.. session private key
 . Dapp begins long-polling the bridge server for the connecting mobile wallet's details using the unique session token
-. After mobile wallet scans in the QR code, encrypts public wallet address(es) with session private key, then pushes the following info to bridge server:
+. After mobile wallet scans in the QR code, encrypts public wallet address(es) with session private key, then pushes the following info to bridge server to be updated in Redis:
 .. unique session token
 .. encrypted public wallet address(es)
 .. wallet push server webhook (optional)
