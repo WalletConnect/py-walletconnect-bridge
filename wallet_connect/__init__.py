@@ -101,13 +101,13 @@ async def add_transaction_details(request):
     session_token = request_json['sessionToken']
     encrypted_transaction_details = request_json['encryptedTransactionDetails']
     # TODO could be optional notification details
-    notification_details = request_json['notificationDetails']
+    dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
     await keystore.add_transaction_details(redis_conn, transaction_uuid, session_token, encrypted_transaction_details)
     # Notify wallet webhook
     fcm_data = await keystore.get_device_fcm_data(redis_conn, session_token)
     session = request.app[SESSION]
-    await send_webhook_request(session, fcm_data, session_token, transaction_uuid, notification_details)
+    await send_webhook_request(session, fcm_data, session_token, transaction_uuid, dapp_name)
     data_message = {"transactionUuid": transaction_uuid}
     return web.json_response(data_message, status=201)
   except KeyError:
@@ -181,14 +181,14 @@ async def get_transaction_status(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-async def send_webhook_request(session, fcm_data, session_token, transaction_uuid, notification_details):
+async def send_webhook_request(session, fcm_data, session_token, transaction_uuid, dapp_name):
   fcm_token = fcm_data['fcm_token']
   wallet_webhook = fcm_data['wallet_webhook']
   payload = {
     'sessionToken': session_token,
     'transactionUuid': transaction_uuid,
     'fcmToken': fcm_token,
-    'notificationDetails': notification_details
+    'dappName': dapp_name
   }
   headers = {'Content-Type': 'application/json'}
   response = await session.post(wallet_webhook, json=payload, headers=headers)
