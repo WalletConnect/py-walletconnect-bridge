@@ -60,11 +60,9 @@ async def update_device_details(request):
     wallet_webhook = request_json['walletWebhook']
     encrypted_device_details = request_json['encryptedDeviceDetails']
     redis_conn = get_redis_master(request.app)
-    device_uuid = str(uuid.uuid4())
-    await keystore.add_device_fcm_data(redis_conn, device_uuid, wallet_webhook, fcm_token)
-    await keystore.update_device_details(redis_conn, device_uuid, session_token, encrypted_device_details)
-    device_uuid_data = {"deviceUuid": device_uuid}
-    return web.json_response(device_uuid_data, status=202)
+    await keystore.add_device_fcm_data(redis_conn, session_token, wallet_webhook, fcm_token)
+    await keystore.update_device_details(redis_conn, session_token, encrypted_device_details)
+    return web.Response(status=200)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError:
@@ -83,6 +81,7 @@ async def get_device_details(request):
     redis_conn = get_redis_master(request.app)
     device_details = await keystore.get_device_details(redis_conn, session_token)
     if device_details:
+      session_data = {"encryptedDeviceDetails": device_details}
       return web.json_response(device_details)
     else: 
       return web.Response(status=204)
@@ -99,16 +98,16 @@ async def add_transaction_details(request):
   try:
     request_json = await request.json()
     transaction_uuid = str(uuid.uuid4())
-    device_uuid = request_json['deviceUuid']
+    session_token = request_json['sessionToken']
     encrypted_transaction_details = request_json['encryptedTransactionDetails']
     # TODO could be optional notification details
     notification_details = request_json['notificationDetails']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_transaction_details(redis_conn, transaction_uuid, device_uuid, encrypted_transaction_details)
+    await keystore.add_transaction_details(redis_conn, transaction_uuid, session_token, encrypted_transaction_details)
     # Notify wallet webhook
-    fcm_data = await keystore.get_device_fcm_data(redis_conn, device_uuid)
+    fcm_data = await keystore.get_device_fcm_data(redis_conn, session_token)
     session = request.app[SESSION]
-    await send_webhook_request(session, fcm_data, device_uuid, transaction_uuid, notification_details)
+    await send_webhook_request(session, fcm_data, session_token, transaction_uuid, notification_details)
     data_message = {"transactionUuid": transaction_uuid}
     return web.json_response(data_message, status=201)
   except KeyError:
@@ -128,9 +127,9 @@ async def get_transaction_details(request):
   request_json = await request.json()
   try:
     transaction_uuid = request_json['transactionUuid']
-    device_uuid = request_json['deviceUuid']
+    session_token = request_json['sessionToken']
     redis_conn = get_redis_master(request.app)
-    details = await keystore.get_transaction_details(redis_conn, transaction_uuid, device_uuid)
+    details = await keystore.get_transaction_details(redis_conn, session_token, transaction_uuid)
     json_response = {"encryptedTransactionDetails": details}
     return web.json_response(json_response)
   except KeyError:
@@ -148,10 +147,9 @@ async def update_transaction_status(request):
   try:
     request_json = await request.json()
     transaction_uuid = request_json['transactionUuid']
-    device_uuid = request_json['deviceUuid']
     encrypted_transaction_status = request_json['encryptedTransactionStatus']
     redis_conn = get_redis_master(request.app)
-    await keystore.update_transaction_status(redis_conn, transaction_uuid, device_uuid, encrypted_transaction_status)
+    await keystore.update_transaction_status(redis_conn, transaction_uuid, encrypted_transaction_status)
     return web.Response(status=201)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -166,11 +164,11 @@ async def get_transaction_status(request):
   try:
     request_json = await request.json()
     transaction_uuid = request_json['transactionUuid']
-    device_uuid = request_json['deviceUuid']
     redis_conn = get_redis_master(request.app)
-    transaction_status = await keystore.get_transaction_status(redis_conn, transaction_uuid, device_uuid)
+    transaction_status = await keystore.get_transaction_status(redis_conn, transaction_uuid)
     if transaction_status:
-      return web.json_response(transaction_status)
+      json_response = {"encryptedTransactionStatus": transaction_status}
+      return web.json_response(json_response)
     else:
       return web.Response(status=204)
   except KeyError:
@@ -181,11 +179,11 @@ async def get_transaction_status(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-async def send_webhook_request(session, fcm_data, device_uuid, transaction_uuid, notification_details):
+async def send_webhook_request(session, fcm_data, session_token, transaction_uuid, notification_details):
   fcm_token = fcm_data['fcm_token']
   wallet_webhook = fcm_data['wallet_webhook']
   payload = {
-    'deviceUuid': device_uuid,
+    'sessionToken': session_token,
     'transactionUuid': transaction_uuid,
     'fcmToken': fcm_token,
     'notificationDetails': notification_details
