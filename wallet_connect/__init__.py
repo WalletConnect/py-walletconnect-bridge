@@ -33,13 +33,13 @@ async def hello(request):
   return web.Response(text="hello world, this is Wallet Connect")
 
 
-@routes.get('/request-device-details')
-async def request_device_details(request):
+@routes.post('/session/new')
+async def new_session(request):
   try:
-    session_token = str(uuid.uuid4())
+    session_id = str(uuid.uuid4())
     redis_conn = get_redis_master(request.app)
-    await keystore.add_request_for_device_details(redis_conn, session_token)
-    session_data = {"sessionToken": session_token}
+    await keystore.add_request_for_device_details(redis_conn, session_id)
+    session_data = {"sessionId": session_id}
     return web.json_response(session_data)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -51,17 +51,17 @@ async def request_device_details(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.post('/update-device-details')
-async def update_device_details(request):
+@routes.put('/session/{sessionId}')
+async def update_session(request):
   request_json = await request.json()
   try:
-    session_token = request_json['sessionToken']
+    session_id = request.match_info['sessionId']
     fcm_token = request_json['fcmToken']
     wallet_webhook = request_json['walletWebhook']
-    encrypted_device_details = request_json['encryptedDeviceDetails']
+    data = request_json['data']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_device_fcm_data(redis_conn, session_token, wallet_webhook, fcm_token)
-    await keystore.update_device_details(redis_conn, session_token, encrypted_device_details)
+    await keystore.add_device_fcm_data(redis_conn, session_id, wallet_webhook, fcm_token)
+    await keystore.update_device_details(redis_conn, session_id, data)
     return web.Response(status=200)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -73,15 +73,14 @@ async def update_device_details(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.post('/get-device-details')
-async def get_device_details(request):
+@routes.get('/session/{sessionId}')
+async def get_session(request):
   try:
-    request_json = await request.json()
-    session_token = request_json['sessionToken']
+    session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
-    device_details = await keystore.get_device_details(redis_conn, session_token)
+    device_details = await keystore.get_device_details(redis_conn, session_id)
     if device_details:
-      session_data = {"encryptedDeviceDetails": device_details}
+      session_data = {"data": device_details}
       return web.json_response(session_data)
     else: 
       return web.Response(status=204)
@@ -93,22 +92,22 @@ async def get_device_details(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.post('/add-transaction-details')
-async def add_transaction_details(request):
+@routes.post('/session/{sessionId}/transaction/new')
+async def new_transaction(request):
   try:
     request_json = await request.json()
-    transaction_uuid = str(uuid.uuid4())
-    session_token = request_json['sessionToken']
-    encrypted_transaction_details = request_json['encryptedTransactionDetails']
+    transaction_id = str(uuid.uuid4())
+    session_id = request.match_info['sessionId']
+    data = request_json['data']
     # TODO could be optional notification details
     dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_transaction_details(redis_conn, transaction_uuid, session_token, encrypted_transaction_details)
+    await keystore.add_transaction_details(redis_conn, transaction_id, session_id, data)
     # Notify wallet webhook
-    fcm_data = await keystore.get_device_fcm_data(redis_conn, session_token)
+    fcm_data = await keystore.get_device_fcm_data(redis_conn, session_id)
     session = request.app[SESSION]
-    await send_webhook_request(session, fcm_data, session_token, transaction_uuid, dapp_name)
-    data_message = {"transactionUuid": transaction_uuid}
+    await send_webhook_request(session, fcm_data, session_id, transaction_id, dapp_name)
+    data_message = {"transactionId": transaction_id}
     return web.json_response(data_message, status=201)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -122,15 +121,14 @@ async def add_transaction_details(request):
       return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.post('/get-transaction-details')
-async def get_transaction_details(request):
-  request_json = await request.json()
+@routes.get('/session/{sessionId}/transaction/{transactionId}')
+async def get_transaction(request):
   try:
-    transaction_uuid = request_json['transactionUuid']
-    session_token = request_json['sessionToken']
+    session_id = request.match_info['sessionId']
+    transaction_id = request.match_info['transactionId']
     redis_conn = get_redis_master(request.app)
-    details = await keystore.get_transaction_details(redis_conn, session_token, transaction_uuid)
-    json_response = {"encryptedTransactionDetails": details}
+    details = await keystore.get_transaction_details(redis_conn, session_id, transaction_id)
+    json_response = {"data": details}
     return web.json_response(json_response)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -142,15 +140,15 @@ async def get_transaction_details(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.post('/update-transaction-status')
-async def update_transaction_status(request):
+@routes.post('/session/{sessionId}/transaction/{transactionId}/status/new')
+async def new_transaction_status(request):
   try:
     request_json = await request.json()
-    transaction_uuid = request_json['transactionUuid']
-    session_token = request_json['sessionToken']
-    encrypted_transaction_status = request_json['encryptedTransactionStatus']
+    session_id = request.match_info['sessionId']
+    transaction_id = request.match_info['transactionId']
+    data = request_json['data']
     redis_conn = get_redis_master(request.app)
-    await keystore.update_transaction_status(redis_conn, transaction_uuid, session_token, encrypted_transaction_status)
+    await keystore.update_transaction_status(redis_conn, transaction_id, session_id, data)
     return web.Response(status=201)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -160,16 +158,15 @@ async def update_transaction_status(request):
       return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.post('/get-transaction-status')
+@routes.get('/session/{sessionId}/transaction/{transactionId}/status')
 async def get_transaction_status(request):
   try:
-    request_json = await request.json()
-    transaction_uuid = request_json['transactionUuid']
-    session_token = request_json['sessionToken']
+    session_id = request.match_info['sessionId']
+    transaction_id = request.match_info['transactionId']
     redis_conn = get_redis_master(request.app)
-    transaction_status = await keystore.get_transaction_status(redis_conn, transaction_uuid, session_token)
+    transaction_status = await keystore.get_transaction_status(redis_conn, transaction_id, session_id)
     if transaction_status:
-      json_response = {"encryptedTransactionStatus": transaction_status}
+      json_response = {"data": transaction_status}
       return web.json_response(json_response)
     else:
       return web.Response(status=204)
@@ -181,12 +178,12 @@ async def get_transaction_status(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-async def send_webhook_request(session, fcm_data, session_token, transaction_uuid, dapp_name):
+async def send_webhook_request(session, fcm_data, session_id, transaction_id, dapp_name):
   fcm_token = fcm_data['fcm_token']
   wallet_webhook = fcm_data['wallet_webhook']
   payload = {
-    'sessionToken': session_token,
-    'transactionUuid': transaction_uuid,
+    'sessionId': session_id,
+    'transactionId': transaction_id,
     'fcmToken': fcm_token,
     'dappName': dapp_name
   }

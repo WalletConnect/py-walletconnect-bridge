@@ -18,31 +18,31 @@ async def create_sentinel_connection(event_loop, sentinels):
   return sentinel
 
 
-async def add_request_for_device_details(conn, session_token):
-  key = session_key(session_token)
+async def add_request_for_device_details(conn, session_id):
+  key = session_key(session_id)
   success = await write(conn, key, '')
   if not success:
     raise KeystoreWriteError('Error adding request for details')
 
 
-async def update_device_details(conn, session_token, encrypted_device_details):
-  key = session_key(session_token)
+async def update_device_details(conn, session_id, encrypted_device_details):
+  key = session_key(session_id)
   success = await write(conn, key, encrypted_device_details, write_only_if_exists=True)
   if not success:
     raise KeystoreTokenExpiredError
 
 
-async def get_device_details(conn, session_token):
-  key = session_key(session_token)
+async def get_device_details(conn, session_id):
+  key = session_key(session_id)
   details = await conn.get(key)
   if details:
     await conn.delete(key)
   return details
 
 
-async def add_device_fcm_data(conn, session_token, wallet_webhook, fcm_token):
+async def add_device_fcm_data(conn, session_id, wallet_webhook, fcm_token):
   # TODO what if we want wallet_webhook to be null?
-  key = fcm_device_key(session_token)
+  key = fcm_device_key(session_id)
   data = {'fcm_token': fcm_token, 'wallet_webhook': wallet_webhook}
   fcm_data = json.dumps(data)
   success = await write(conn, key, fcm_data, expiration_in_seconds=24*60*60)
@@ -50,24 +50,24 @@ async def add_device_fcm_data(conn, session_token, wallet_webhook, fcm_token):
     raise KeystoreWriteError("Could not write device FCM data")
   
 
-async def get_device_fcm_data(conn, session_token):
-  device_key = fcm_device_key(session_token)
+async def get_device_fcm_data(conn, session_id):
+  device_key = fcm_device_key(session_id)
   data = await conn.get(device_key)
   if not data:
     raise KeystoreFcmTokenError
   return json.loads(data)
 
 
-async def add_transaction_details(conn, transaction_uuid, session_token, encrypted_transaction_details):
-  key = transaction_key(transaction_uuid, session_token)
+async def add_transaction_details(conn, transaction_id, session_id, encrypted_transaction_details):
+  key = transaction_key(transaction_id, session_id)
   # TODO how long should this be here for?
   success = await write(conn, key, encrypted_transaction_details, expiration_in_seconds=60*60)
   if not success:
     raise KeystoreWriteError("Error adding transaction details")
 
 
-async def get_transaction_details(conn, session_token, transaction_uuid):
-  key = transaction_key(transaction_uuid, session_token)
+async def get_transaction_details(conn, session_id, transaction_id):
+  key = transaction_key(transaction_id, session_id)
   details = await conn.get(key)
   if not details:
     raise KeystoreFetchError("Error getting transaction details")
@@ -76,37 +76,33 @@ async def get_transaction_details(conn, session_token, transaction_uuid):
     return details
 
 
-async def update_transaction_status(conn, transaction_uuid, session_token, encrypted_transaction_status):
-  key = transaction_hash_key(transaction_uuid, session_token)
+async def update_transaction_status(conn, transaction_id, session_id, encrypted_transaction_status):
+  key = transaction_hash_key(transaction_id, session_id)
   success = await write(conn, key, encrypted_transaction_status)
 
 
-async def get_transaction_status(conn, transaction_uuid, session_token):
-  key = transaction_hash_key(transaction_uuid, session_token)
+async def get_transaction_status(conn, transaction_id, session_id):
+  key = transaction_hash_key(transaction_id, session_id)
   encrypted_transaction_status = await conn.get(key)
   if encrypted_transaction_status:
     await conn.delete(key)
   return encrypted_transaction_status
 
 
-def api_redis_key(api_key):
-  return "apikey:{}".format(api_key)
+def session_key(session_id):
+  return "session:{}".format(session_id)
 
 
-def session_key(session_token):
-  return "session:{}".format(session_token)
+def fcm_device_key(session_id):
+  return "fcmdevice:{}".format(session_id)
 
 
-def fcm_device_key(session_token):
-  return "fcmdevice:{}".format(session_token)
+def transaction_key(transaction_id, session_id):
+  return "txn:{}:{}".format(transaction_id, session_id)
 
 
-def transaction_key(transaction_uuid, session_token):
-  return "txn:{}:{}".format(transaction_uuid, session_token)
-
-
-def transaction_hash_key(transaction_uuid, session_token):
-  return "txnhash:{}:{}".format(transaction_uuid, session_token)
+def transaction_hash_key(transaction_id, session_id):
+  return "txnhash:{}:{}".format(transaction_id, session_id)
 
 
 async def write(conn, key, value='', expiration_in_seconds=5*60, write_only_if_exists=False):
