@@ -34,7 +34,7 @@ async def hello(request):
 
 
 @routes.post('/session/new')
-async def request_device_details(request):
+async def new_session(request):
   try:
     session_id = str(uuid.uuid4())
     redis_conn = get_redis_master(request.app)
@@ -52,7 +52,7 @@ async def request_device_details(request):
 
 
 @routes.put('/session/{sessionId}')
-async def update_device_details(request):
+async def update_session(request):
   request_json = await request.json()
   try:
     session_id = request.match_info['sessionId']
@@ -74,7 +74,7 @@ async def update_device_details(request):
 
 
 @routes.get('/session/{sessionId}')
-async def get_device_details(request):
+async def get_session(request):
   try:
     session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
@@ -93,7 +93,7 @@ async def get_device_details(request):
 
 
 @routes.post('/session/{sessionId}/transaction/new')
-async def add_transaction_details(request):
+async def new_transaction(request):
   try:
     request_json = await request.json()
     transaction_id = str(uuid.uuid4())
@@ -122,7 +122,7 @@ async def add_transaction_details(request):
 
 
 @routes.get('/session/{sessionId}/transaction/{transactionId}')
-async def get_transaction_details(request):
+async def get_transaction(request):
   try:
     session_id = request.match_info['sessionId']
     transaction_id = request.match_info['transactionId']
@@ -141,7 +141,7 @@ async def get_transaction_details(request):
 
 
 @routes.post('/session/{sessionId}/transaction/{transactionId}/status/new')
-async def update_transaction_status(request):
+async def new_transaction_status(request):
   try:
     request_json = await request.json()
     session_id = request.match_info['sessionId']
