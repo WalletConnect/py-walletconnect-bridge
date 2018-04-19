@@ -22,3 +22,10 @@ Wallet push server:: Manages push notifications to a mobile wallet. This server 
 * Public wallet address(es) from mobile wallet to dapp
 * Unsigned transaction details from dapp to mobile wallet
 * Transaction hash from mobile wallet to dapp
+
+---
+
+=== More Documentation
+Read more specific details on the data flows:
+* link:wallet_addresses.adoc[Wallet Addresses Flow]
+* link:transactions.adoc[Transactions Flow]
