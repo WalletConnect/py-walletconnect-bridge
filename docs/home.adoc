@@ -27,6 +27,7 @@ Wallet push server:: Manages push notifications to a mobile wallet. This server 
 
 === More Documentation
 Read more specific details on the data flows:
+
 link:wallet_addresses.adoc[Wallet Addresses Flow]
 
 link:transactions.adoc[Transactions Flow]
