@@ -5,6 +5,8 @@ A full introduction is described in our docs.
 * [Wallet Addresses Flow](https://github.com/WalletConnect/WalletConnect/blob/master/docs/wallet_addresses.adoc) 
 * [Transactions Flow](https://github.com/WalletConnect/WalletConnect/blob/master/docs/transactions.adoc)
 
+Telegram: [t.me/walletconnect](http://t.me/walletconnect)
+
 ## Getting Started
 If you'd like to keep a separate Python environment for this project's installs, set up virtualenv
 ~~~~
