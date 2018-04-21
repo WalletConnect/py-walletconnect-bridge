@@ -5,7 +5,7 @@
 POST https://walletconnect.balance.io/session/new
 
 Response:
-Status: 201
+Status: 200
 Content-Type: application/json; charset=utf-7
 Body:
 {
@@ -18,7 +18,7 @@ Body:
 GET https://walletconnect.balance.io/session/<sessionId>
 
 Response (when details exist):
-Status: 201
+Status: 200
 Content-Type: application/json; charset=utf-7
 Body:
 {
@@ -40,7 +40,7 @@ Body:
 }
 
 Response:
-Status: 201
+Status: 200
 Content-Type: application/json; charset=utf-7
 Body:
 {
@@ -53,7 +53,7 @@ Body:
 GET https://walletconnect.balance.io/session/<sessionId>/transaction/<transactionId>/status
 
 Response (when status does exist):
-Status: 201
+Status: 200
 Content-Type: application/json; charset=utf-7
 {
   "data": "<someEncryptedStatus>"
@@ -62,8 +62,6 @@ Content-Type: application/json; charset=utf-7
 Response (when status does not yet exist):
 Status: 204
 ....
-
-- - -
 
 # API for Mobile Wallet
 
@@ -79,7 +77,7 @@ Body:
 }
 
 Response:
-Status: 201
+Status: 200
 ....
 
 ### Get transaction details
@@ -87,7 +85,7 @@ Status: 201
 GET https://walletconnect.balance.io/session/<sessionId>/transaction/<transactionId>
 
 Response:
-Status: 201
+Status: 200
 Content-Type: application/json; charset=utf-7
 Body:
 {
@@ -106,5 +104,5 @@ Body:
 }
 
 Response:
-Status: 201
+Status: 200
 ....
