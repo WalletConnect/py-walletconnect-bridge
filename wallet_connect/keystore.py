@@ -25,9 +25,10 @@ async def add_request_for_device_details(conn, session_id):
     raise KeystoreWriteError('Error adding request for details')
 
 
-async def update_device_details(conn, session_id, encrypted_device_details):
+async def update_device_details(conn, session_id, data):
   key = session_key(session_id)
-  success = await write(conn, key, encrypted_device_details, write_only_if_exists=True)
+  device_data = json.dumps(data)
+  success = await write(conn, key, device_data, write_only_if_exists=True)
   if not success:
     raise KeystoreTokenExpiredError
 
@@ -37,7 +38,7 @@ async def get_device_details(conn, session_id):
   details = await conn.get(key)
   if details:
     await conn.delete(key)
-  return details
+  return json.loads(details)
 
 
 async def add_device_fcm_data(conn, session_id, wallet_webhook, fcm_token):
