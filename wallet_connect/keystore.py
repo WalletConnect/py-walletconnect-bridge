@@ -38,7 +38,9 @@ async def get_device_details(conn, session_id):
   details = await conn.get(key)
   if details:
     await conn.delete(key)
-  return json.loads(details)
+    return json.loads(details)
+  else:
+    return None
 
 
 async def add_device_fcm_data(conn, session_id, wallet_webhook, fcm_token):
