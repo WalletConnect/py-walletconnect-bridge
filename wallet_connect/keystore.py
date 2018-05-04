@@ -61,10 +61,11 @@ async def get_device_fcm_data(conn, session_id):
   return json.loads(data)
 
 
-async def add_transaction_details(conn, transaction_id, session_id, encrypted_transaction_details):
+async def add_transaction_details(conn, transaction_id, session_id, data):
   key = transaction_key(transaction_id, session_id)
   # TODO how long should this be here for?
-  success = await write(conn, key, encrypted_transaction_details, expiration_in_seconds=60*60)
+  txn_data = json.dumps(data)
+  success = await write(conn, key, txn_data, expiration_in_seconds=60*60)
   if not success:
     raise KeystoreWriteError("Error adding transaction details")
 
@@ -76,7 +77,7 @@ async def get_transaction_details(conn, session_id, transaction_id):
     raise KeystoreFetchError("Error getting transaction details")
   else:
     await conn.delete(key)
-    return details
+    return json.loads(details)
 
 
 async def update_transaction_status(conn, transaction_id, session_id, encrypted_transaction_status):
