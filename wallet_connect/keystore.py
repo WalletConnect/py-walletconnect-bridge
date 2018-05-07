@@ -80,9 +80,12 @@ async def get_transaction_details(conn, session_id, transaction_id):
     return json.loads(details)
 
 
-async def update_transaction_status(conn, transaction_id, session_id, encrypted_transaction_status):
+async def update_transaction_status(conn, transaction_id, session_id, data):
   key = transaction_hash_key(transaction_id, session_id)
-  success = await write(conn, key, encrypted_transaction_status)
+  transaction_status = json.dumps(data)
+  success = await write(conn, key, transaction_status)
+  if not success:
+    raise KeystoreWriteError("Error adding transaction status")
 
 
 async def get_transaction_status(conn, transaction_id, session_id):
@@ -90,7 +93,7 @@ async def get_transaction_status(conn, transaction_id, session_id):
   encrypted_transaction_status = await conn.get(key)
   if encrypted_transaction_status:
     await conn.delete(key)
-  return encrypted_transaction_status
+  return json.loads(encrypted_transaction_status)
 
 
 def session_key(session_id):
