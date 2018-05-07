@@ -172,8 +172,6 @@ async def get_transaction_status(request):
       return web.Response(status=204)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
-  except TypeError:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400)
   except:
     return web.json_response(error_message("Error unknown"), status=500)
 

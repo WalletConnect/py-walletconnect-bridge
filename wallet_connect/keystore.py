@@ -93,7 +93,9 @@ async def get_transaction_status(conn, transaction_id, session_id):
   encrypted_transaction_status = await conn.get(key)
   if encrypted_transaction_status:
     await conn.delete(key)
-  return json.loads(encrypted_transaction_status)
+    return json.loads(encrypted_transaction_status)
+  else:
+    return None
 
 
 def session_key(session_id):
