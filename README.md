@@ -1,4 +1,4 @@
-# WalletConnect
+# py-walletconnect-bridge
 A full introduction is described in our docs.
 
 * [Overview](https://github.com/WalletConnect/WalletConnect/blob/master/docs/home.adoc)
@@ -21,9 +21,9 @@ export VIRTUALENVWRAPPER_PYTHON=/usr/local/bin/python3
 source /usr/local/bin/virtualenvwrapper.sh
 ~~~~
 
-From the project directory, run these commands to install the wallet-connect package in a virtualenv called "wallet-connect"
+From the project directory, run these commands to install the walletconnect-bridge package in a virtualenv called "walletconnect-bridge"
 ~~~~
-$ mkvirtualenv wallet-connect
+$ mkvirtualenv walletconnect-bridge
 $ pip install -r requirements.txt
 $ python setup.py develop
 ~~~~
@@ -35,7 +35,7 @@ $ redis-server
 
 Run the project locally
 ~~~~
-$ wallet-connect --redis-local --push-local --api-local
+$ walletconnect-bridge --redis-local --push-local --api-local
 ~~~~
 
 Use a tool like Postman to create requests to interact with the server.
