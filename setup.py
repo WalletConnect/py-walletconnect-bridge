@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-  name='wallet-connect',
+  name='walletconnect-bridge',
   version="0.1",
   install_requires=[
     'aiohttp',
@@ -11,6 +11,6 @@ setup(
   ],
   packages=find_packages(),
   entry_points={
-    'console_scripts': ['wallet-connect=wallet_connect:main',]
+    'console_scripts': ['walletconnect-bridge=walletconnect_bridge:main',]
   },
 )

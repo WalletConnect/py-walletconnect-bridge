@@ -1,0 +1,14 @@
+[Unit]
+Description=WalletConnect Bridge daemon
+
+[Service]
+Type=simple
+User=wallet-connect
+Group=wallet-connect
+ExecStart=/usr/local/bin/walletconnect-bridge
+ExecStop=/bin/kill `/bin/ps aux | /bin/grep 'walletconnect-bridge$' | /bin/grep -v grep | /usr/bin/awk '{ print $2 }'`
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

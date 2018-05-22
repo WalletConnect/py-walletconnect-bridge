@@ -1,7 +1,7 @@
 import aioredis
 import json
 
-from wallet_connect.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, KeystoreFcmTokenError
+from walletconnect_bridge.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, KeystoreFcmTokenError
 
 async def create_connection(event_loop, host='localhost', port=6379, db=0):
   redis_uri = 'redis://{}:{}/{}'.format(host, port, db)

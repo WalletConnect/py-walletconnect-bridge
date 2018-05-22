@@ -7,8 +7,8 @@ import uvloop
 from aiohttp import web
 import boto3
 
-import wallet_connect.keystore
-from wallet_connect.errors import KeystoreWriteError, KeystoreFetchError, WalletConnectPushError, KeystoreTokenExpiredError, KeystoreFcmTokenError
+import walletconnect_bridge.keystore
+from walletconnect_bridge.errors import KeystoreWriteError, KeystoreFetchError, WalletConnectPushError, KeystoreTokenExpiredError, KeystoreFcmTokenError
 
 routes = web.RouteTableDef()
 
