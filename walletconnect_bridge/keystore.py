@@ -114,7 +114,7 @@ def transaction_hash_key(transaction_id, session_id):
   return "txnhash:{}:{}".format(transaction_id, session_id)
 
 
-async def write(conn, key, value='', expiration_in_seconds=5*60, write_only_if_exists=False):
+async def write(conn, key, value='', expiration_in_seconds=60*10, write_only_if_exists=False):
   exist = 'SET_IF_EXIST' if write_only_if_exists else None
   success = await conn.set(key, value, expire=expiration_in_seconds, exist=exist)
   return success
