@@ -35,7 +35,7 @@ $ redis-server
 
 Run the project locally
 ~~~~
-$ walletconnect-bridge --redis-local --push-local --api-local
+$ walletconnect-bridge --redis-local
 ~~~~
 
 Use a tool like Postman to create requests to interact with the server.
