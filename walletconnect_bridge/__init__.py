@@ -3,9 +3,12 @@ import argparse
 import uuid
 import asyncio
 import aiohttp
-import uvloop
 from aiohttp import web
 import boto3
+try:
+  import uvloop
+except ModuleNotFoundError:
+  pass
 
 import walletconnect_bridge.keystore
 from walletconnect_bridge.errors import KeystoreWriteError, KeystoreFetchError, WalletConnectPushError, KeystoreTokenExpiredError, KeystoreFcmTokenError
