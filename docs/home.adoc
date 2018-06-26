@@ -1,4 +1,4 @@
-Wallet Connect is a simple solution that bridges communication between browser-based dapps and mobile wallets using a QR code to establish the initial connection. It is an open protocol and does not require a dapp user to install a browser extension. The protocol is agnostic to specific mobile wallets a user may want to use and enables dapp developers to integrate with multiple wallets through a single implementation.
+Wallet Connect is a simple solution that bridges communication between browser-based dapps and mobile wallets using a QR code to establish the initial connection. It is an open standard and does not require a dapp user to install a browser extension. The standard is agnostic to specific mobile wallets a user may want to use and enables dapp developers to integrate with multiple wallets through a single implementation.
 
 ---
 
