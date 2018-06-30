@@ -1,13 +1,22 @@
 server {
-    listen 443;
+    listen 80;
     server_name bridge.mydomain.com;
 
     return 301 https://$host$request_uri;
 }
 
 server {
-    listen 80;
+    listen 443 ssl;
     server_name bridge.mydomain.com;
+
+    ssl_certificate     /keys/cert.pem;
+    ssl_certificate_key /keys/key.pem;
+    ssl_session_timeout 1d;
+    ssl_session_cache   shared:SSL:50m;
+    ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers         HIGH:!aNULL:!eNULL:!EXPORT:!CAMELLIA:!DES:!MD5:!PSK:!RC4;
+    ssl_prefer_server_ciphers on;
+
 
     location / {
         proxy_set_header        Host $host;
@@ -17,5 +26,18 @@ server {
         proxy_pass                  http://0.0.0.0:8080;
         proxy_read_timeout    90;
         proxy_redirect             http://0.0.0.0:8080 http://bridge.mydomain.com;
+
+        # Simple requests
+        if ($request_method ~* "(GET|POST)") {
+            add_header "Access-Control-Allow-Origin"  *;
+        }
+
+        # Preflighted requests
+        if ($request_method = OPTIONS ) {
+            add_header "Access-Control-Allow-Origin"  *;
+            add_header "Access-Control-Allow-Methods" "GET, POST, OPTIONS, HEAD";
+            add_header "Access-Control-Allow-Headers" "Authorization, Origin, X-Requested-With, Content-Type, Accept";
+            return 200;
+        }
     }
 }
