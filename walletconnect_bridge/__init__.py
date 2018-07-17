@@ -2,6 +2,7 @@ import sys
 import argparse
 import uuid
 import asyncio
+import time
 import aiohttp
 from aiohttp import web
 import boto3
@@ -19,6 +20,7 @@ REDIS='org.wallet.connect.redis'
 SESSION='org.wallet.connect.session'
 LOCAL='local'
 SERVICE='service'
+EXPIRATION = 86400000
 
 def error_message(message):
   return {"message": message}
@@ -42,7 +44,9 @@ async def new_session(request):
     session_id = str(uuid.uuid4())
     redis_conn = get_redis_master(request.app)
     await keystore.add_request_for_device_details(redis_conn, session_id)
-    session_data = {"sessionId": session_id}
+    now = time.time()
+    expires = int((now + EXPIRATION) * 1000)
+    session_data = {"sessionId": session_id, "expires": expires}
     return web.json_response(session_data)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -85,7 +89,7 @@ async def get_session(request):
     if device_details:
       session_data = {"data": device_details}
       return web.json_response(session_data)
-    else: 
+    else:
       return web.Response(status=204)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -222,7 +226,7 @@ async def close_client_session_connection(app):
   await app[SESSION].close()
 
 
-def main(): 
+def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--redis-local', action='store_true')
   parser.add_argument('--no-uvloop', action='store_true')
