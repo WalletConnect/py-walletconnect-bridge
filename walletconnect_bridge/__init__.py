@@ -62,10 +62,10 @@ async def update_session(request):
   try:
     session_id = request.match_info['sessionId']
     fcm_token = request_json['fcmToken']
-    wallet_webhook = request_json['walletWebhook']
+    push_endpoint = request_json['pushEndpoint']
     data = request_json['data']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_device_fcm_data(redis_conn, session_id, wallet_webhook, fcm_token, expiration_in_seconds=SESSION_EXPIRATION)
+    await keystore.add_device_fcm_data(redis_conn, session_id, push_endpoint, fcm_token, expiration_in_seconds=SESSION_EXPIRATION)
     await keystore.update_device_details(redis_conn, session_id, data, expiration_in_seconds=TX_DETAILS_EXPIRATION)
     return web.Response(status=200)
   except KeyError:
@@ -107,11 +107,11 @@ async def new_transaction(request):
     # TODO could be optional notification details
     dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_transaction_details(redis_conn, transaction_id, session_id, data)
-    # Notify wallet webhook
+    await keystore.add_transaction_details(redis_conn, transaction_id, session_id, data, expiration_in_seconds=TX_DETAILS_EXPIRATION)
+    # Notify wallet push endpoint
     fcm_data = await keystore.get_device_fcm_data(redis_conn, session_id)
     session = request.app[SESSION]
-    await send_webhook_request(session, fcm_data, session_id, transaction_id, dapp_name)
+    await send_push_request(session, fcm_data, session_id, transaction_id, dapp_name)
     data_message = {"transactionId": transaction_id}
     return web.json_response(data_message, status=201)
   except KeyError:
@@ -179,9 +179,9 @@ async def get_transaction_status(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-async def send_webhook_request(session, fcm_data, session_id, transaction_id, dapp_name):
+async def send_push_request(session, fcm_data, session_id, transaction_id, dapp_name):
   fcm_token = fcm_data['fcm_token']
-  wallet_webhook = fcm_data['wallet_webhook']
+  push_endpoint = fcm_data['push_endpoint']
   payload = {
     'sessionId': session_id,
     'transactionId': transaction_id,
@@ -189,7 +189,7 @@ async def send_webhook_request(session, fcm_data, session_id, transaction_id, da
     'dappName': dapp_name
   }
   headers = {'Content-Type': 'application/json'}
-  response = await session.post(wallet_webhook, json=payload, headers=headers)
+  response = await session.post(push_endpoint, json=payload, headers=headers)
   if response.status != 200:
     raise WalletConnectPushError
 
