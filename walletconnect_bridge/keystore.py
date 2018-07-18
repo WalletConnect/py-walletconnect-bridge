@@ -43,10 +43,10 @@ async def get_device_details(conn, session_id):
     return (None, 0)
 
 
-async def add_device_fcm_data(conn, session_id, wallet_webhook, fcm_token, expiration_in_seconds):
-  # TODO what if we want wallet_webhook to be null?
+async def add_device_fcm_data(conn, session_id, push_endpoint, fcm_token, expiration_in_seconds):
+  # TODO what if we want push_endpoint to be null?
   key = fcm_device_key(session_id)
-  data = {'fcm_token': fcm_token, 'wallet_webhook': wallet_webhook}
+  data = {'fcm_token': fcm_token, 'push_endpoint': push_endpoint}
   fcm_data = json.dumps(data)
   success = await write(conn, key, fcm_data, expiration_in_seconds)
   if not success:
