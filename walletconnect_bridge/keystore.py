@@ -37,10 +37,10 @@ async def get_device_details(conn, session_id):
   key = session_key(session_id)
   details = await conn.get(key)
   if details:
-    await conn.delete(key)
-    return json.loads(details)
+    ttl_in_seconds = await conn.ttl(key)
+    return (json.loads(details), ttl_in_seconds)
   else:
-    return None
+    return (None, 0)
 
 
 async def add_device_fcm_data(conn, session_id, wallet_webhook, fcm_token, expiration_in_seconds):
@@ -63,7 +63,6 @@ async def get_device_fcm_data(conn, session_id):
 
 async def add_transaction_details(conn, transaction_id, session_id, data, expiration_in_seconds):
   key = transaction_key(transaction_id, session_id)
-  # TODO how long should this be here for?
   txn_data = json.dumps(data)
   success = await write(conn, key, txn_data, expiration_in_seconds)
   if not success:
