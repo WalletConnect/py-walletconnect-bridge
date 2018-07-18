@@ -20,7 +20,7 @@ REDIS='org.wallet.connect.redis'
 SESSION='org.wallet.connect.session'
 LOCAL='local'
 SERVICE='service'
-EXPIRATION = 86400000
+EXPIRATION = 24*60*60
 
 def error_message(message):
   return {"message": message}

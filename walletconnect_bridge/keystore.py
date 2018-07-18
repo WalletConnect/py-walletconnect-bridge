@@ -20,7 +20,7 @@ async def create_sentinel_connection(event_loop, sentinels):
 
 async def add_request_for_device_details(conn, session_id):
   key = session_key(session_id)
-  success = await write(conn, key, '')
+  success = await write(conn, key, '', expiration_in_seconds=24*60*60)
   if not success:
     raise KeystoreWriteError('Error adding request for details')
 
@@ -51,7 +51,7 @@ async def add_device_fcm_data(conn, session_id, wallet_webhook, fcm_token):
   success = await write(conn, key, fcm_data, expiration_in_seconds=24*60*60)
   if not success:
     raise KeystoreWriteError("Could not write device FCM data")
-  
+
 
 async def get_device_fcm_data(conn, session_id):
   device_key = fcm_device_key(session_id)
