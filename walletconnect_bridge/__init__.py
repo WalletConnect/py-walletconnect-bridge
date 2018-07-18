@@ -145,15 +145,14 @@ async def get_transaction(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.post('/session/{sessionId}/transaction/{transactionId}/status/new')
+@routes.post('/transactionstatus/{transactionId}/new')
 async def new_transaction_status(request):
   try:
     request_json = await request.json()
-    session_id = request.match_info['sessionId']
     transaction_id = request.match_info['transactionId']
     data = request_json['data']
     redis_conn = get_redis_master(request.app)
-    await keystore.update_transaction_status(redis_conn, transaction_id, session_id, data)
+    await keystore.update_transaction_status(redis_conn, transaction_id, data)
     return web.Response(status=201)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -163,13 +162,12 @@ async def new_transaction_status(request):
       return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.get('/session/{sessionId}/transaction/{transactionId}/status')
+@routes.get('/transactionstatus/{transactionId}')
 async def get_transaction_status(request):
   try:
-    session_id = request.match_info['sessionId']
     transaction_id = request.match_info['transactionId']
     redis_conn = get_redis_master(request.app)
-    transaction_status = await keystore.get_transaction_status(redis_conn, transaction_id, session_id)
+    transaction_status = await keystore.get_transaction_status(redis_conn, transaction_id)
     if transaction_status:
       json_response = {"data": transaction_status}
       return web.json_response(json_response)
