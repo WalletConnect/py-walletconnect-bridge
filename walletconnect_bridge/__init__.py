@@ -2,7 +2,6 @@ import sys
 import argparse
 import uuid
 import asyncio
-import time
 import aiohttp
 from aiohttp import web
 import boto3
@@ -45,9 +44,7 @@ async def new_session(request):
     session_id = str(uuid.uuid4())
     redis_conn = get_redis_master(request.app)
     await keystore.add_request_for_device_details(redis_conn, session_id, expiration_in_seconds=SESSION_EXPIRATION)
-    now = time.time()
-    expires = int((now + EXPIRATION) * 1000)
-    session_data = {"sessionId": session_id, "expires": expires}
+    session_data = {"sessionId": session_id}
     return web.json_response(session_data)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -69,7 +66,7 @@ async def update_session(request):
     data = request_json['data']
     redis_conn = get_redis_master(request.app)
     await keystore.add_device_fcm_data(redis_conn, session_id, push_endpoint, fcm_token, expiration_in_seconds=SESSION_EXPIRATION)
-    await keystore.update_device_details(redis_conn, session_id, data)
+    await keystore.update_device_details(redis_conn, session_id, data, expiration_in_seconds=TX_DETAILS_EXPIRATION)
     return web.Response(status=200)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
