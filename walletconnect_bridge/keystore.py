@@ -28,7 +28,7 @@ async def add_request_for_device_details(conn, session_id, expiration_in_seconds
 async def update_device_details(conn, session_id, data, expiration_in_seconds):
   key = session_key(session_id)
   device_data = json.dumps(data)
-  success = await write(conn, key, device_data, write_only_if_exists=True, expiration_in_seconds)
+  success = await write(conn, key, device_data, expiration_in_seconds, write_only_if_exists=True)
   if not success:
     raise KeystoreTokenExpiredError
 
