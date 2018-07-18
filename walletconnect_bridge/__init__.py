@@ -145,7 +145,7 @@ async def get_transaction(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.post('/transactionstatus/{transactionId}/new')
+@routes.post('/transaction-status/{transactionId}/new')
 async def new_transaction_status(request):
   try:
     request_json = await request.json()
@@ -162,7 +162,7 @@ async def new_transaction_status(request):
       return web.json_response(error_message("Error unknown"), status=500)
 
 
-@routes.get('/transactionstatus/{transactionId}')
+@routes.get('/transaction-status/{transactionId}')
 async def get_transaction_status(request):
   try:
     transaction_id = request.match_info['transactionId']
