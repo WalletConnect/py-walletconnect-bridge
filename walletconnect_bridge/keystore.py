@@ -18,17 +18,17 @@ async def create_sentinel_connection(event_loop, sentinels):
   return sentinel
 
 
-async def add_request_for_device_details(conn, session_id):
+async def add_request_for_device_details(conn, session_id, expiration_in_seconds):
   key = session_key(session_id)
-  success = await write(conn, key, '')
+  success = await write(conn, key, '', expiration_in_seconds)
   if not success:
     raise KeystoreWriteError('Error adding request for details')
 
 
-async def update_device_details(conn, session_id, data):
+async def update_device_details(conn, session_id, data, expiration_in_seconds):
   key = session_key(session_id)
   device_data = json.dumps(data)
-  success = await write(conn, key, device_data, write_only_if_exists=True)
+  success = await write(conn, key, device_data, write_only_if_exists=True, expiration_in_seconds)
   if not success:
     raise KeystoreTokenExpiredError
 
@@ -37,21 +37,21 @@ async def get_device_details(conn, session_id):
   key = session_key(session_id)
   details = await conn.get(key)
   if details:
-    await conn.delete(key)
-    return json.loads(details)
+    ttl_in_seconds = await conn.ttl(key)
+    return (json.loads(details), ttl_in_seconds)
   else:
-    return None
+    return (None, 0)
 
 
-async def add_device_fcm_data(conn, session_id, wallet_webhook, fcm_token):
-  # TODO what if we want wallet_webhook to be null?
+async def add_device_fcm_data(conn, session_id, push_endpoint, fcm_token, expiration_in_seconds):
+  # TODO what if we want push_endpoint to be null?
   key = fcm_device_key(session_id)
-  data = {'fcm_token': fcm_token, 'wallet_webhook': wallet_webhook}
+  data = {'fcm_token': fcm_token, 'push_endpoint': push_endpoint}
   fcm_data = json.dumps(data)
-  success = await write(conn, key, fcm_data, expiration_in_seconds=24*60*60)
+  success = await write(conn, key, fcm_data, expiration_in_seconds)
   if not success:
     raise KeystoreWriteError("Could not write device FCM data")
-  
+
 
 async def get_device_fcm_data(conn, session_id):
   device_key = fcm_device_key(session_id)
@@ -61,11 +61,10 @@ async def get_device_fcm_data(conn, session_id):
   return json.loads(data)
 
 
-async def add_transaction_details(conn, transaction_id, session_id, data):
+async def add_transaction_details(conn, transaction_id, session_id, data, expiration_in_seconds):
   key = transaction_key(transaction_id, session_id)
-  # TODO how long should this be here for?
   txn_data = json.dumps(data)
-  success = await write(conn, key, txn_data, expiration_in_seconds=60*60)
+  success = await write(conn, key, txn_data, expiration_in_seconds)
   if not success:
     raise KeystoreWriteError("Error adding transaction details")
 
@@ -80,16 +79,16 @@ async def get_transaction_details(conn, session_id, transaction_id):
     return json.loads(details)
 
 
-async def update_transaction_status(conn, transaction_id, session_id, data):
-  key = transaction_hash_key(transaction_id, session_id)
+async def update_transaction_status(conn, transaction_id, data):
+  key = transaction_hash_key(transaction_id)
   transaction_status = json.dumps(data)
   success = await write(conn, key, transaction_status)
   if not success:
     raise KeystoreWriteError("Error adding transaction status")
 
 
-async def get_transaction_status(conn, transaction_id, session_id):
-  key = transaction_hash_key(transaction_id, session_id)
+async def get_transaction_status(conn, transaction_id):
+  key = transaction_hash_key(transaction_id)
   encrypted_transaction_status = await conn.get(key)
   if encrypted_transaction_status:
     await conn.delete(key)
@@ -110,11 +109,11 @@ def transaction_key(transaction_id, session_id):
   return "txn:{}:{}".format(transaction_id, session_id)
 
 
-def transaction_hash_key(transaction_id, session_id):
-  return "txnhash:{}:{}".format(transaction_id, session_id)
+def transaction_hash_key(transaction_id):
+  return "txnhash:{}".format(transaction_id)
 
 
-async def write(conn, key, value='', expiration_in_seconds=60*10, write_only_if_exists=False):
+async def write(conn, key, value='', expiration_in_seconds=60*60, write_only_if_exists=False):
   exist = 'SET_IF_EXIST' if write_only_if_exists else None
   success = await conn.set(key, value, expire=expiration_in_seconds, exist=exist)
   return success
