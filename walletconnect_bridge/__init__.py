@@ -66,7 +66,7 @@ async def update_session(request):
     data = request_json['data']
     redis_conn = get_redis_master(request.app)
     await keystore.add_device_fcm_data(redis_conn, session_id, push_endpoint, fcm_token, expiration_in_seconds=SESSION_EXPIRATION)
-    await keystore.update_device_details(redis_conn, session_id, data, expiration_in_seconds=TX_DETAILS_EXPIRATION)
+    await keystore.update_device_details(redis_conn, session_id, data, expiration_in_seconds=SESSION_EXPIRATION)
     return web.Response(status=200)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
@@ -85,7 +85,7 @@ async def get_session(request):
     redis_conn = get_redis_master(request.app)
     (device_details, ttl_in_seconds) = await keystore.get_device_details(redis_conn, session_id)
     if device_details:
-      session_data = {"data": device_details, "ttl_in_seconds": ttl_in_seconds}
+      session_data = {"data": device_details, "ttlInSeconds": ttl_in_seconds}
       return web.json_response(session_data)
     else:
       return web.Response(status=204)
