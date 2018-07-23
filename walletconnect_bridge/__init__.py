@@ -18,6 +18,7 @@ routes = web.RouteTableDef()
 REDIS='org.wallet.connect.redis'
 SESSION='org.wallet.connect.session'
 LOCAL='local'
+HOST='host'
 SERVICE='service'
 SESSION_EXPIRATION = 24*60*60   # 24hrs
 TX_DETAILS_EXPIRATION = 60*60   # 1hr
@@ -206,7 +207,7 @@ async def initialize_client_session(app):
 
 async def initialize_keystore(app):
   if app[REDIS][LOCAL]:
-    app[REDIS][SERVICE] = await keystore.create_connection(event_loop=app.loop)
+    app[REDIS][SERVICE] = await keystore.create_connection(event_loop=app.loop, host=app[REDIS][HOST])
   else:
     sentinels = get_kms_parameter('wallet-connect-redis-sentinels')
     app[REDIS][SERVICE] = await keystore.create_sentinel_connection(event_loop=app.loop,
@@ -225,13 +226,17 @@ async def close_client_session_connection(app):
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--redis-local', action='store_true')
+  parser.add_argument('--redis-host', type=str, default='localhost')
   parser.add_argument('--no-uvloop', action='store_true')
   parser.add_argument('--host', type=str, default='localhost')
   parser.add_argument('--port', type=int, default=8080)
   args = parser.parse_args()
 
   app = web.Application()
-  app[REDIS] = {LOCAL: args.redis_local}
+  app[REDIS] = {
+    LOCAL: args.redis_local,
+    HOST: args.redis_host
+  }
   app.on_startup.append(initialize_client_session)
   app.on_startup.append(initialize_keystore)
   app.on_cleanup.append(close_keystore)
