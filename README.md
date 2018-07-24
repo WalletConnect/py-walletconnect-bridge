@@ -11,7 +11,7 @@ Telegram: [t.me/walletconnect](http://t.me/walletconnect)
 Add all the subdomains you want to serve as nginx configuration files in the nginx folder, and do a volume mapping to the dockers nginx configuration folder like this sample:
 ~~~~
 $ docker build . -t py-walletconnect-bridge
-$ docker run -v $(pwd)/nginx/:/etc/nginx/sites-enabled/ -p 443:443 -p 80:80 py-walletconnect-bridge
+$ docker run -it -v $(pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge
 ~~~~
 For this sample configuration file, the bridge will be available at http://bridge.mydomain.com/ . After specifying bridge.mydomain.com to 0.0.0.0 in /etc/hosts,You can test it at http://bridge.mydomain.com/hello
 
