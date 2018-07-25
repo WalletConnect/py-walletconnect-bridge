@@ -33,11 +33,15 @@ if [ `ls /source/ssl/certbot` ]; then
   mkdir -p /etc/letsencrypt/live
   cp -rf /source/ssl/certbot/* /etc/letsencrypt/live/
 else
-  echo "generating certbot keys"
-  #create certificate with certbot
-  certbot --nginx
-  #copy keys to local for rehydrating
-  cp -rfL /etc/letsencrypt/live/* /source/ssl/certbot/
+  if [ "$1" != "--skip-certbot" ]; then
+    echo "generating certbot keys"
+    #create certificate with certbot
+    certbot --nginx
+    #copy keys to local for rehydrating
+    cp -rfL /etc/letsencrypt/live/* /source/ssl/certbot/
+  else
+    echo "skipping certbot"
+  fi
 fi
 echo "generated keys"
 
