@@ -3,3 +3,6 @@ __pycache__/
 *.egg-info/
 *.egg
 .DS_Store
+ssl/*.pem
+ssl/certbot/*
+!ssl/certbot/.keep
