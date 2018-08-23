@@ -1,11 +1,5 @@
 # py-walletconnect-bridge
-A full introduction is described in our docs.
-
-* [Overview](https://github.com/WalletConnect/WalletConnect/blob/master/docs/home.adoc)
-* [Wallet Addresses Flow](https://github.com/WalletConnect/WalletConnect/blob/master/docs/wallet_addresses.adoc)
-* [Transactions Flow](https://github.com/WalletConnect/WalletConnect/blob/master/docs/transactions.adoc)
-
-Telegram: [t.me/walletconnect](http://t.me/walletconnect)
+A full introduction is described in our docs: https://docs.walletconnect.org/technical-specification
 
 ## Docker setup
 Add all the subdomains you want to serve as nginx configuration files in the nginx folder, and do a volume mapping to the dockers nginx configuration folder like this sample:
