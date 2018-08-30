@@ -7,7 +7,6 @@ setup(
     'aiohttp',
     'aioredis',
     'uvloop',
-    'boto3',
   ],
   packages=find_packages(),
   entry_points={

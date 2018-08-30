@@ -4,7 +4,6 @@ import uuid
 import asyncio
 import aiohttp
 from aiohttp import web
-import boto3
 try:
   import uvloop
 except ModuleNotFoundError:
@@ -17,7 +16,8 @@ routes = web.RouteTableDef()
 
 REDIS='org.wallet.connect.redis'
 SESSION='org.wallet.connect.session'
-LOCAL='local'
+SENTINEL='sentinel'
+SENTINELS='sentinels'
 HOST='host'
 SERVICE='service'
 SESSION_EXPIRATION = 24*60*60   # 24hrs
@@ -28,11 +28,10 @@ def error_message(message):
 
 
 def get_redis_master(app):
-  if app[REDIS][LOCAL]:
-    return app[REDIS][SERVICE]
-  sentinel = app[REDIS][SERVICE]
-  return sentinel.master_for('mymaster')
-
+  if app[REDIS][SENTINEL]:
+    sentinel = app[REDIS][SERVICE]
+    return sentinel.master_for('mymaster')
+  return app[REDIS][SERVICE]
 
 @routes.get('/hello')
 async def hello(request):
@@ -68,7 +67,8 @@ async def update_session(request):
     redis_conn = get_redis_master(request.app)
     await keystore.add_device_fcm_data(redis_conn, session_id, push_endpoint, fcm_token, expiration_in_seconds=SESSION_EXPIRATION)
     await keystore.update_device_details(redis_conn, session_id, data, expiration_in_seconds=SESSION_EXPIRATION)
-    return web.Response(status=200)
+    session_data = {"ttlInSeconds": SESSION_EXPIRATION}
+    return web.json_response(session_data)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError:
@@ -98,6 +98,18 @@ async def get_session(request):
     return web.json_response(error_message("Error unknown"), status=500)
 
 
+@routes.delete('/session/{sessionId}')
+async def remove_session(request):
+  try:
+    session_id = request.match_info['sessionId']
+    redis_conn = get_redis_master(request.app)
+    await keystore.remove_device_fcm_data(redis_conn, session_id)
+    await keystore.remove_device_details(redis_conn, session_id)
+    return web.Response(status=200)
+  except:
+    return web.json_response(error_message("Error unknown"), status=500)
+
+
 @routes.post('/session/{sessionId}/transaction/new')
 async def new_transaction(request):
   try:
@@ -115,12 +127,12 @@ async def new_transaction(request):
     await send_push_request(session, fcm_data, session_id, transaction_id, dapp_name)
     data_message = {"transactionId": transaction_id}
     return web.json_response(data_message, status=201)
+  except KeystoreFcmTokenError:
+    return web.json_response(error_message("FCM token for this session is no longer available"), status=500)
   except KeyError:
     return web.json_response(error_message("Incorrect input parameters"), status=400)
   except TypeError:
     return web.json_response(error_message("Incorrect JSON content type"), status=400)
-  except KeystoreFcmTokenError:
-    return web.json_response(error_message("Error finding FCM token for device"), status=500)
   except WalletConnectPushError:
     return web.json_response(error_message("Error sending message to wallet connect push endpoint"), status=500)
   except:
@@ -134,6 +146,24 @@ async def get_transaction(request):
     transaction_id = request.match_info['transactionId']
     redis_conn = get_redis_master(request.app)
     details = await keystore.get_transaction_details(redis_conn, session_id, transaction_id)
+    json_response = {"data": details}
+    return web.json_response(json_response)
+  except KeyError:
+    return web.json_response(error_message("Incorrect input parameters"), status=400)
+  except TypeError:
+    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+  except KeystoreFetchError:
+    return web.json_response(error_message("Error retrieving transaction details"), status=500)
+  except:
+    return web.json_response(error_message("Error unknown"), status=500)
+
+
+@routes.get('/session/{sessionId}/transactions')
+async def get_all_transactions(request):
+  try:
+    session_id = request.match_info['sessionId']
+    redis_conn = get_redis_master(request.app)
+    details = await keystore.get_all_transactions(redis_conn, session_id)
     json_response = {"data": details}
     return web.json_response(json_response)
   except KeyError:
@@ -195,23 +225,18 @@ async def send_push_request(session, fcm_data, session_id, transaction_id, dapp_
     raise WalletConnectPushError
 
 
-def get_kms_parameter(param_name):
-  ssm = boto3.client('ssm', region_name='us-east-2')
-  response = ssm.get_parameters(Names=[param_name], WithDecryption=True)
-  return response['Parameters'][0]['Value']
-
-
 async def initialize_client_session(app):
   app[SESSION] = aiohttp.ClientSession(loop=app.loop)
 
 
 async def initialize_keystore(app):
-  if app[REDIS][LOCAL]:
-    app[REDIS][SERVICE] = await keystore.create_connection(event_loop=app.loop, host=app[REDIS][HOST])
-  else:
-    sentinels = get_kms_parameter('wallet-connect-redis-sentinels')
+  if app[REDIS][SENTINEL]:
+    sentinels = app[REDIS][SENTINELS].split(',')
     app[REDIS][SERVICE] = await keystore.create_sentinel_connection(event_loop=app.loop,
-                                                           sentinels=sentinels.split(','))
+                                                                    sentinels=sentinels)
+  else:
+    app[REDIS][SERVICE] = await keystore.create_connection(event_loop=app.loop,
+                                                           host=app[REDIS][HOST])
 
 
 async def close_keystore(app):
@@ -225,7 +250,8 @@ async def close_client_session_connection(app):
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('--redis-local', action='store_true')
+  parser.add_argument('--redis-use-sentinel', action='store_true')
+  parser.add_argument('--sentinels', type=str)
   parser.add_argument('--redis-host', type=str, default='localhost')
   parser.add_argument('--no-uvloop', action='store_true')
   parser.add_argument('--host', type=str, default='localhost')
@@ -234,7 +260,8 @@ def main():
 
   app = web.Application()
   app[REDIS] = {
-    LOCAL: args.redis_local,
+    SENTINEL: args.redis_use_sentinel,
+    SENTINELS: args.sentinels,
     HOST: args.redis_host
   }
   app.on_startup.append(initialize_client_session)
