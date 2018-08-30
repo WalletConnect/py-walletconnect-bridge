@@ -10,7 +10,7 @@ ln -s /source/ssl /keys
 redis-server &
 echo "started redis server"
 sleep 5
-walletconnect-bridge --redis-local --port 8080 --host 0.0.0.0 &
+walletconnect-bridge --port 8080 --host 0.0.0.0 &
 echo "started wallet connect server"
 
 #key generation
