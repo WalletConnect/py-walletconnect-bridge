@@ -101,7 +101,7 @@ async def get_all_transactions(conn, session_id):
     return {}
   else:
     zipped_results = dict(zip(all_keys, details))
-    filtered_results = {k: v for k, json.loads(v) in zipped_results.items() if v}
+    filtered_results = {k: json.loads(v) for k, v in zipped_results.items() if v}
     await conn.delete(all_keys)
     return filtered_results
 
@@ -133,7 +133,7 @@ def fcm_device_key(session_id):
 
 
 def transaction_key(session_id, transaction_id):
-  return "txn:{}:{}".format(session_id transaction_id)
+  return "txn:{}:{}".format(session_id, transaction_id)
 
 
 def transaction_hash_key(transaction_id):
