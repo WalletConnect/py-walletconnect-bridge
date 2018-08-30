@@ -18,6 +18,7 @@ REDIS='org.wallet.connect.redis'
 SESSION='org.wallet.connect.session'
 SENTINEL='sentinel'
 SENTINELS='sentinels'
+HOST='host'
 SERVICE='service'
 SESSION_EXPIRATION = 24*60*60   # 24hrs
 TX_DETAILS_EXPIRATION = 60*60   # 1hr
@@ -234,7 +235,8 @@ async def initialize_keystore(app):
     app[REDIS][SERVICE] = await keystore.create_sentinel_connection(event_loop=app.loop,
                                                                     sentinels=sentinels)
   else:
-    app[REDIS][SERVICE] = await keystore.create_connection(event_loop=app.loop)
+    app[REDIS][SERVICE] = await keystore.create_connection(event_loop=app.loop,
+                                                           host=app[REDIS][HOST])
 
 
 async def close_keystore(app):
@@ -250,13 +252,18 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--redis-use-sentinel', action='store_true')
   parser.add_argument('--sentinels', type=str)
+  parser.add_argument('--redis-host', type=str, default='localhost')
   parser.add_argument('--no-uvloop', action='store_true')
   parser.add_argument('--host', type=str, default='localhost')
   parser.add_argument('--port', type=int, default=8080)
   args = parser.parse_args()
 
   app = web.Application()
-  app[REDIS] = {SENTINEL: args.redis_use_sentinel, SENTINELS: args.sentinels}
+  app[REDIS] = {
+    SENTINEL: args.redis_use_sentinel,
+    SENTINELS: args.sentinels,
+    HOST: args.redis_host
+  }
   app.on_startup.append(initialize_client_session)
   app.on_startup.append(initialize_keystore)
   app.on_cleanup.append(close_keystore)
