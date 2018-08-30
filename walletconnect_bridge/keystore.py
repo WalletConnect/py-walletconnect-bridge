@@ -73,8 +73,7 @@ async def remove_device_fcm_data(conn, session_id):
 
 async def add_transaction_details(conn, transaction_id, session_id, data, expiration_in_seconds):
   key = transaction_key(session_id, transaction_id)
-  txn_data = json.dumps(data)
-  success = await write(conn, key, txn_data, expiration_in_seconds)
+  success = await write(conn, key, data, expiration_in_seconds)
   if not success:
     raise KeystoreWriteError("Error adding transaction details")
 
@@ -86,7 +85,7 @@ async def get_transaction_details(conn, session_id, transaction_id):
     raise KeystoreFetchError("Error getting transaction details")
   else:
     await conn.delete(key)
-    return json.loads(details)
+    return details
 
 
 async def get_all_transactions(conn, session_id):
@@ -94,16 +93,16 @@ async def get_all_transactions(conn, session_id):
   all_keys = []
   cur = b'0'  # set initial cursor to 0
   while cur:
-    cur, keys = await redis.scan(cur, match=key)
+    cur, keys = await conn.scan(cur, match=key)
     all_keys.extend(keys);
-  details = await conn.mget(all_keys)
-  if not details:
+  if not all_keys:
     return {}
-  else:
-    zipped_results = dict(zip(all_keys, details))
-    filtered_results = {k: json.loads(v) for k, v in zipped_results.items() if v}
-    await conn.delete(all_keys)
-    return filtered_results
+  details = await conn.mget(*all_keys)
+  transaction_ids = map(lambda x: x.split(':')[2], all_keys)
+  zipped_results = dict(zip(transaction_ids, details))
+  filtered_results = {k: v for k, v in zipped_results.items() if v}
+  await conn.delete(*all_keys)
+  return filtered_results
 
 
 async def update_transaction_status(conn, transaction_id, data):
