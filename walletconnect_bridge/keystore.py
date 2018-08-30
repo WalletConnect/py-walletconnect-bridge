@@ -101,7 +101,7 @@ async def get_all_transactions(conn, session_id):
   details = await conn.mget(*all_keys)
   transaction_ids = map(lambda x: x.split(':')[2], all_keys)
   zipped_results = dict(zip(transaction_ids, details))
-  filtered_results = {k: v for k, v in zipped_results.items() if v}
+  filtered_results = {k: json.loads(v) for k, v in zipped_results.items() if v}
   await conn.delete(*all_keys)
   return filtered_results
 
