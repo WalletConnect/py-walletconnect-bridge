@@ -68,7 +68,7 @@ async def update_session(request):
     redis_conn = get_redis_master(request.app)
     await keystore.add_device_fcm_data(redis_conn, session_id, push_endpoint, fcm_token, expiration_in_seconds=SESSION_EXPIRATION)
     await keystore.update_device_details(redis_conn, session_id, data, expiration_in_seconds=SESSION_EXPIRATION)
-    session_data = {"ttlInSeconds": SESSION_EXPIRATION}
+    session_data = {'ttlInSeconds': SESSION_EXPIRATION}
     return web.json_response(session_data)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
@@ -108,7 +108,7 @@ async def remove_session(request):
     await keystore.remove_device_details(redis_conn, session_id)
     return web.Response(status=200)
   except:
-    return web.json_response(error_message("Error unknown"), status=500)
+    return web.json_response(error_message('Error unknown'), status=500)
 
 
 @routes.post('/session/{sessionId}/transaction/new')
@@ -130,7 +130,7 @@ async def new_transaction(request):
     data_message = {'transactionId': transaction_id}
     return web.json_response(data_message, status=201)
   except KeystoreFcmTokenError:
-    return web.json_response(error_message("FCM token for this session is no longer available"), status=500)
+    return web.json_response(error_message('FCM token for this session is no longer available'), status=500)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
@@ -168,16 +168,16 @@ async def get_all_transactions(request):
     session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
     details = await keystore.get_all_transactions(redis_conn, session_id)
-    json_response = {"data": details}
+    json_response = {'data': details}
     return web.json_response(json_response)
   except KeyError:
-    return web.json_response(error_message("Incorrect input parameters"), status=400)
+    return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+    return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except KeystoreFetchError:
-    return web.json_response(error_message("Error retrieving transaction details"), status=500)
+    return web.json_response(error_message('Error retrieving transaction details'), status=500)
   except:
-    return web.json_response(error_message("Error unknown"), status=500)
+    return web.json_response(error_message('Error unknown'), status=500)
 
 
 @routes.post('/transaction-status/{transactionId}/new')
