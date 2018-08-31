@@ -50,7 +50,7 @@ async def add_device_fcm_data(conn, session_id, push_endpoint, fcm_token, expira
   fcm_data = json.dumps(data)
   success = await write(conn, key, fcm_data, expiration_in_seconds)
   if not success:
-    raise KeystoreWriteError("Could not write device FCM data")
+    raise KeystoreWriteError('Could not write device FCM data')
 
 
 async def get_device_fcm_data(conn, session_id):
@@ -66,14 +66,14 @@ async def add_transaction_details(conn, transaction_id, session_id, data, expira
   txn_data = json.dumps(data)
   success = await write(conn, key, txn_data, expiration_in_seconds)
   if not success:
-    raise KeystoreWriteError("Error adding transaction details")
+    raise KeystoreWriteError('Error adding transaction details')
 
 
 async def get_transaction_details(conn, session_id, transaction_id):
   key = transaction_key(transaction_id, session_id)
   details = await conn.get(key)
   if not details:
-    raise KeystoreFetchError("Error getting transaction details")
+    raise KeystoreFetchError('Error getting transaction details')
   else:
     await conn.delete(key)
     return json.loads(details)
@@ -84,7 +84,7 @@ async def update_transaction_status(conn, transaction_id, data):
   transaction_status = json.dumps(data)
   success = await write(conn, key, transaction_status)
   if not success:
-    raise KeystoreWriteError("Error adding transaction status")
+    raise KeystoreWriteError('Error adding transaction status')
 
 
 async def get_transaction_status(conn, transaction_id):
@@ -98,19 +98,19 @@ async def get_transaction_status(conn, transaction_id):
 
 
 def session_key(session_id):
-  return "session:{}".format(session_id)
+  return 'session:{}'.format(session_id)
 
 
 def fcm_device_key(session_id):
-  return "fcmdevice:{}".format(session_id)
+  return 'fcmdevice:{}'.format(session_id)
 
 
 def transaction_key(transaction_id, session_id):
-  return "txn:{}:{}".format(transaction_id, session_id)
+  return 'txn:{}:{}'.format(transaction_id, session_id)
 
 
 def transaction_hash_key(transaction_id):
-  return "txnhash:{}".format(transaction_id)
+  return 'txnhash:{}'.format(transaction_id)
 
 
 async def write(conn, key, value='', expiration_in_seconds=60*60, write_only_if_exists=False):

@@ -3,6 +3,7 @@ import argparse
 import uuid
 import asyncio
 import aiohttp
+import time
 from aiohttp import web
 import boto3
 try:
@@ -23,7 +24,7 @@ SESSION_EXPIRATION = 24*60*60   # 24hrs
 TX_DETAILS_EXPIRATION = 60*60   # 1hr
 
 def error_message(message):
-  return {"message": message}
+  return {'message': message}
 
 
 def get_redis_master(app):
@@ -35,7 +36,7 @@ def get_redis_master(app):
 
 @routes.get('/hello')
 async def hello(request):
-  return web.Response(text="hello world, this is Wallet Connect")
+  return web.Response(text='hello world, this is Wallet Connect')
 
 
 @routes.post('/session/new')
@@ -44,16 +45,16 @@ async def new_session(request):
     session_id = str(uuid.uuid4())
     redis_conn = get_redis_master(request.app)
     await keystore.add_request_for_device_details(redis_conn, session_id, expiration_in_seconds=SESSION_EXPIRATION)
-    session_data = {"sessionId": session_id}
+    session_data = {'sessionId': session_id}
     return web.json_response(session_data)
   except KeyError:
-    return web.json_response(error_message("Incorrect input parameters"), status=400)
+    return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+    return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except KeystoreWriteError:
-    return web.json_response(error_message("Error writing to db"), status=500)
+    return web.json_response(error_message('Error writing to db'), status=500)
   except:
-    return web.json_response(error_message("Error unknown"), status=500)
+    return web.json_response(error_message('Error unknown'), status=500)
 
 
 @routes.put('/session/{sessionId}')
@@ -69,13 +70,13 @@ async def update_session(request):
     await keystore.update_device_details(redis_conn, session_id, data, expiration_in_seconds=SESSION_EXPIRATION)
     return web.Response(status=200)
   except KeyError:
-    return web.json_response(error_message("Incorrect input parameters"), status=400)
+    return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+    return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except KeystoreTokenExpiredError:
-    return web.json_response(error_message("Connection sharing token has expired"), status=500)
+    return web.json_response(error_message('Connection sharing token has expired'), status=500)
   except:
-    return web.json_response(error_message("Error unknown"), status=500)
+    return web.json_response(error_message('Error unknown'), status=500)
 
 
 @routes.get('/session/{sessionId}')
@@ -85,16 +86,16 @@ async def get_session(request):
     redis_conn = get_redis_master(request.app)
     (device_details, ttl_in_seconds) = await keystore.get_device_details(redis_conn, session_id)
     if device_details:
-      session_data = {"data": device_details, "ttlInSeconds": ttl_in_seconds}
+      session_data = {'data': device_details, 'ttlInSeconds': ttl_in_seconds}
       return web.json_response(session_data)
     else:
       return web.Response(status=204)
   except KeyError:
-    return web.json_response(error_message("Incorrect input parameters"), status=400)
+    return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+    return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except:
-    return web.json_response(error_message("Error unknown"), status=500)
+    return web.json_response(error_message('Error unknown'), status=500)
 
 
 @routes.post('/session/{sessionId}/transaction/new')
@@ -104,6 +105,7 @@ async def new_transaction(request):
     transaction_id = str(uuid.uuid4())
     session_id = request.match_info['sessionId']
     data = request_json['data']
+    data['timestamp'] = time.time()
     # TODO could be optional notification details
     dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
@@ -112,18 +114,18 @@ async def new_transaction(request):
     fcm_data = await keystore.get_device_fcm_data(redis_conn, session_id)
     session = request.app[SESSION]
     await send_push_request(session, fcm_data, session_id, transaction_id, dapp_name)
-    data_message = {"transactionId": transaction_id}
+    data_message = {'transactionId': transaction_id}
     return web.json_response(data_message, status=201)
   except KeyError:
-    return web.json_response(error_message("Incorrect input parameters"), status=400)
+    return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+    return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except KeystoreFcmTokenError:
-    return web.json_response(error_message("Error finding FCM token for device"), status=500)
+    return web.json_response(error_message('Error finding FCM token for device'), status=500)
   except WalletConnectPushError:
-    return web.json_response(error_message("Error sending message to wallet connect push endpoint"), status=500)
+    return web.json_response(error_message('Error sending message to wallet connect push endpoint'), status=500)
   except:
-      return web.json_response(error_message("Error unknown"), status=500)
+      return web.json_response(error_message('Error unknown'), status=500)
 
 
 @routes.get('/session/{sessionId}/transaction/{transactionId}')
@@ -133,16 +135,16 @@ async def get_transaction(request):
     transaction_id = request.match_info['transactionId']
     redis_conn = get_redis_master(request.app)
     details = await keystore.get_transaction_details(redis_conn, session_id, transaction_id)
-    json_response = {"data": details}
+    json_response = {'data': details}
     return web.json_response(json_response)
   except KeyError:
-    return web.json_response(error_message("Incorrect input parameters"), status=400)
+    return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+    return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except KeystoreFetchError:
-    return web.json_response(error_message("Error retrieving transaction details"), status=500)
+    return web.json_response(error_message('Error retrieving transaction details'), status=500)
   except:
-    return web.json_response(error_message("Error unknown"), status=500)
+    return web.json_response(error_message('Error unknown'), status=500)
 
 
 @routes.post('/transaction-status/{transactionId}/new')
@@ -155,11 +157,11 @@ async def new_transaction_status(request):
     await keystore.update_transaction_status(redis_conn, transaction_id, data)
     return web.Response(status=201)
   except KeyError:
-    return web.json_response(error_message("Incorrect input parameters"), status=400)
+    return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
-    return web.json_response(error_message("Incorrect JSON content type"), status=400)
+    return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except:
-      return web.json_response(error_message("Error unknown"), status=500)
+      return web.json_response(error_message('Error unknown'), status=500)
 
 
 @routes.get('/transaction-status/{transactionId}')
@@ -169,14 +171,14 @@ async def get_transaction_status(request):
     redis_conn = get_redis_master(request.app)
     transaction_status = await keystore.get_transaction_status(redis_conn, transaction_id)
     if transaction_status:
-      json_response = {"data": transaction_status}
+      json_response = {'data': transaction_status}
       return web.json_response(json_response)
     else:
       return web.Response(status=204)
   except KeyError:
-    return web.json_response(error_message("Incorrect input parameters"), status=400)
+    return web.json_response(error_message('Incorrect input parameters'), status=400)
   except:
-    return web.json_response(error_message("Error unknown"), status=500)
+    return web.json_response(error_message('Error unknown'), status=500)
 
 
 async def send_push_request(session, fcm_data, session_id, transaction_id, dapp_name):
