@@ -118,11 +118,11 @@ async def new_transaction(request):
     transaction_id = str(uuid.uuid4())
     session_id = request.match_info['sessionId']
     data = request_json['data']
-    data['timestamp'] = time.time()
+    transaction_data = {'encryptionPayload': data, 'timestamp': time.time()}
     # TODO could be optional notification details
     dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_transaction_details(redis_conn, transaction_id, session_id, data, expiration_in_seconds=TX_DETAILS_EXPIRATION)
+    await keystore.add_transaction_details(redis_conn, transaction_id, session_id, transaction_data, expiration_in_seconds=TX_DETAILS_EXPIRATION)
     # Notify wallet push endpoint
     fcm_data = await keystore.get_device_fcm_data(redis_conn, session_id)
     session = request.app[SESSION]
