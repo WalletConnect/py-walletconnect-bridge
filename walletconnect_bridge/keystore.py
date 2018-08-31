@@ -72,7 +72,7 @@ async def remove_device_fcm_data(conn, session_id):
 
 
 async def add_transaction_details(conn, transaction_id, session_id, data, expiration_in_seconds):
-  key = transaction_key(transaction_id, session_id)
+  key = transaction_key(session_id, transaction_id)
   txn_data = json.dumps(data)
   success = await write(conn, key, txn_data, expiration_in_seconds)
   if not success:
@@ -80,7 +80,7 @@ async def add_transaction_details(conn, transaction_id, session_id, data, expira
 
 
 async def get_transaction_details(conn, session_id, transaction_id):
-  key = transaction_key(transaction_id, session_id)
+  key = transaction_key(session_id, transaction_id)
   details = await conn.get(key)
   if not details:
     raise KeystoreFetchError('Error getting transaction details')
@@ -132,8 +132,8 @@ def fcm_device_key(session_id):
   return 'fcmdevice:{}'.format(session_id)
 
 
-def transaction_key(transaction_id, session_id):
-  return 'txn:{}:{}'.format(transaction_id, session_id)
+def transaction_key(session_id, transaction_id):
+  return 'txn:{}:{}'.format(session_id, transaction_id)
 
 
 def transaction_hash_key(transaction_id):
