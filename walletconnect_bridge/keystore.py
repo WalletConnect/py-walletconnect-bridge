@@ -43,6 +43,11 @@ async def get_device_details(conn, session_id):
     return (None, 0)
 
 
+async def remove_device_details(conn, session_id):
+  key = session_key(session_id)
+  await conn.delete(key)
+
+
 async def add_device_fcm_data(conn, session_id, push_endpoint, fcm_token, expiration_in_seconds):
   # TODO what if we want push_endpoint to be null?
   key = fcm_device_key(session_id)
@@ -61,8 +66,13 @@ async def get_device_fcm_data(conn, session_id):
   return json.loads(data)
 
 
+async def remove_device_fcm_data(conn, session_id):
+  device_key = fcm_device_key(session_id)
+  await conn.delete(device_key)
+
+
 async def add_transaction_details(conn, transaction_id, session_id, data, expiration_in_seconds):
-  key = transaction_key(transaction_id, session_id)
+  key = transaction_key(session_id, transaction_id)
   txn_data = json.dumps(data)
   success = await write(conn, key, txn_data, expiration_in_seconds)
   if not success:
@@ -70,13 +80,30 @@ async def add_transaction_details(conn, transaction_id, session_id, data, expira
 
 
 async def get_transaction_details(conn, session_id, transaction_id):
-  key = transaction_key(transaction_id, session_id)
+  key = transaction_key(session_id, transaction_id)
   details = await conn.get(key)
   if not details:
     raise KeystoreFetchError('Error getting transaction details')
   else:
     await conn.delete(key)
     return json.loads(details)
+
+
+async def get_all_transactions(conn, session_id):
+  key = transaction_key(session_id, '*')
+  all_keys = []
+  cur = b'0'  # set initial cursor to 0
+  while cur:
+    cur, keys = await conn.scan(cur, match=key)
+    all_keys.extend(keys);
+  if not all_keys:
+    return {}
+  details = await conn.mget(*all_keys)
+  transaction_ids = map(lambda x: x.split(':')[2], all_keys)
+  zipped_results = dict(zip(transaction_ids, details))
+  filtered_results = {k: json.loads(v) for k, v in zipped_results.items() if v}
+  await conn.delete(*all_keys)
+  return filtered_results
 
 
 async def update_transaction_status(conn, transaction_id, data):
@@ -105,8 +132,8 @@ def fcm_device_key(session_id):
   return 'fcmdevice:{}'.format(session_id)
 
 
-def transaction_key(transaction_id, session_id):
-  return 'txn:{}:{}'.format(transaction_id, session_id)
+def transaction_key(session_id, transaction_id):
+  return 'txn:{}:{}'.format(session_id, transaction_id)
 
 
 def transaction_hash_key(transaction_id):
