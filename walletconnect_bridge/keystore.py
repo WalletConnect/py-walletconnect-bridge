@@ -61,8 +61,8 @@ async def get_device_fcm_data(conn, session_id):
   return json.loads(data)
 
 
-async def add_transaction_details(conn, transaction_id, transaction_timestamp, session_id, data, expiration_in_seconds):
-  key = transaction_key(transaction_id, session_id, transaction_timestamp)
+async def add_transaction_details(conn, transaction_id, session_id, data, expiration_in_seconds):
+  key = transaction_key(transaction_id, session_id)
   txn_data = json.dumps(data)
   success = await write(conn, key, txn_data, expiration_in_seconds)
   if not success:
@@ -105,8 +105,8 @@ def fcm_device_key(session_id):
   return "fcmdevice:{}".format(session_id)
 
 
-def transaction_key(transaction_id, session_id, transaction_timestamp):
-  return "txn:{}:{}".format(transaction_id, session_id, transaction_timestamp)
+def transaction_key(transaction_id, session_id):
+  return "txn:{}:{}".format(transaction_id, session_id)
 
 
 def transaction_hash_key(transaction_id):
