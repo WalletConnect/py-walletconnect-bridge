@@ -87,7 +87,7 @@ async def get_session(request):
     redis_conn = get_redis_master(request.app)
     (device_details, ttl_in_seconds) = await keystore.get_device_details(redis_conn, session_id)
     if device_details:
-      session_data = {'data': device_details, 'ttlInSeconds': ttl_in_seconds}
+      session_data = {'data': { 'encryptionPayload': device_details, 'ttlInSeconds': ttl_in_seconds}}
       return web.json_response(session_data)
     else:
       return web.Response(status=204)
