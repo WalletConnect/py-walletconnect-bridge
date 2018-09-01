@@ -1,6 +1,7 @@
 import aioredis
 import json
 
+from walletconnect_bridge.time import get_expiration_time
 from walletconnect_bridge.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, KeystoreFcmTokenError
 
 async def create_connection(event_loop, host='localhost', port=6379, db=0):
@@ -25,12 +26,16 @@ async def add_request_for_device_details(conn, session_id, expiration_in_seconds
     raise KeystoreWriteError('Error adding request for details')
 
 
+
 async def update_device_details(conn, session_id, data, expiration_in_seconds):
   key = session_key(session_id)
   device_data = json.dumps(data)
   success = await write(conn, key, device_data, expiration_in_seconds, write_only_if_exists=True)
+  expires_in_seconds = get_expiration_time(ttl_in_seconds=expiration_in_seconds)
   if not success:
     raise KeystoreTokenExpiredError
+  return expires_in_seconds
+
 
 
 async def get_device_details(conn, session_id):
@@ -38,7 +43,8 @@ async def get_device_details(conn, session_id):
   details = await conn.get(key)
   if details:
     ttl_in_seconds = await conn.ttl(key)
-    return (json.loads(details), ttl_in_seconds)
+    expires_in_seconds = get_expiration_time(ttl_in_seconds)
+    return (json.loads(details), expires_in_seconds)
   else:
     return (None, 0)
 
@@ -54,8 +60,10 @@ async def add_device_fcm_data(conn, session_id, push_endpoint, fcm_token, expira
   data = {'fcm_token': fcm_token, 'push_endpoint': push_endpoint}
   fcm_data = json.dumps(data)
   success = await write(conn, key, fcm_data, expiration_in_seconds)
+  expires_in_seconds = get_expiration_time(ttl_in_seconds=expiration_in_seconds)
   if not success:
     raise KeystoreWriteError('Could not write device FCM data')
+  return expires_in_seconds
 
 
 async def get_device_fcm_data(conn, session_id):
