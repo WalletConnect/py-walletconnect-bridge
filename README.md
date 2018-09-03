@@ -1,7 +1,7 @@
-# py-walletconnect-bridge
+# WalletConnect Bridge Python Implementation
 A full introduction is described in our docs: https://docs.walletconnect.org/technical-specification
 
-## Pre-requirements
+## Pre-requirements
 
 1. Python
 2. Docker (for Docker setup)
