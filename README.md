@@ -12,7 +12,7 @@ A full introduction is described in our docs: https://docs.walletconnect.org/tec
 **Step 0.** Point DNS record to your box (required for SSL)
 
 ```bash
-  bridge.example.com	   A	   192.168.1.1
+  bridge.mydomain.com	   A	   192.168.1.1
 ```
 
 **Step 1.** Change the domain name on the `nginx/defaultConf` file
@@ -44,9 +44,11 @@ $ docker run -it -v $(pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge
 $ make run
 ```
 
-**Note**
+You can test it at http://bridge.mydomain.com/hello
 
-For this sample configuration file, the bridge will be available at http://bridge.mydomain.com/ . After specifying bridge.mydomain.com to 0.0.0.0 in /etc/hosts,You can test it at http://bridge.mydomain.com/hello
+**Notes**
+
+For this sample configuration file, the bridge will be available at http://bridge.mydomain.com/ . After specifying bridge.mydomain.com to 0.0.0.0 in /etc/hosts,
 
 This approach uses [Certbot](https://certbot.eff.org/) to generate real SSL certificates for your configured nginx hosts. If you would prefer to use the self signed certificates, you can pass the `--skip-certbot` flag to `docker run` as follows:
 
@@ -68,7 +70,7 @@ $ pip install virtualenv virtualenvwrapper
 ```
 
 Add the following to your ~/.bashrc
-~~~
+```
 export WORKON_HOME=$HOME/.virtualenvs~
 export PROJECT_HOME=$HOME/Devel
 export VIRTUALENVWRAPPER_PYTHON=/usr/local/bin/python3
@@ -92,4 +94,7 @@ Run the project locally
 $ walletconnect-bridge --redis-local
 ```
 
-Use a tool like Postman to create requests to interact with the server.
+Test your Bridge is working
+```
+$ curl http://bridge.mydomain.com/hello
+```
