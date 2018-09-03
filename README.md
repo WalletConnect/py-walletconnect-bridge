@@ -1,13 +1,50 @@
 # py-walletconnect-bridge
 A full introduction is described in our docs: https://docs.walletconnect.org/technical-specification
 
-## Docker setup
-Add all the subdomains you want to serve as nginx configuration files in the nginx folder, and do a volume mapping to the dockers nginx configuration folder like this sample:
-~~~~
-$ docker build . -t py-walletconnect-bridge # or `make build`
-$ docker run -it -v $(pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge # or `make run`
-~~~~
+## Pre-requirements
 
+1. Python
+2. Docker (for Docker setup)
+3. Make (for Make commands)
+
+## Docker setup
+
+0. Point DNS record to your box (required for SSL)
+
+```bash
+  bridge.example.com	   A	   192.168.1.1
+```
+
+1. Change the domain name on the `nginx/defaultConf` file
+```bash
+L4    server_name bridge.mydomain.com;
+
+L10   server_name bridge.mydomain.com;
+
+L28   proxy_redirect             http://0.0.0.0:8080 http://bridge.mydomain.com;
+
+```
+
+2. Run the following command to build the Docker image
+
+```bash
+docker build . -t py-walletconnect-bridge
+
+# OR
+
+make build
+```
+
+3. Finally run the following command to run the Docker container
+```bash
+docker run -it -v $(pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge
+
+# OR
+
+make run
+```
+
+###### Note
 For this sample configuration file, the bridge will be available at http://bridge.mydomain.com/ . After specifying bridge.mydomain.com to 0.0.0.0 in /etc/hosts,You can test it at http://bridge.mydomain.com/hello
 
 This approach uses [Certbot](https://certbot.eff.org/) to generate real SSL certificates for your configured nginx hosts. If you would prefer to use the self signed certificates, you can pass the `--skip-certbot` flag to `docker run`.
