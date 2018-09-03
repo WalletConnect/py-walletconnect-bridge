@@ -3,7 +3,6 @@ import argparse
 import uuid
 import asyncio
 import aiohttp
-import time
 from aiohttp import web
 try:
   import uvloop
@@ -11,6 +10,7 @@ except ModuleNotFoundError:
   pass
 
 import walletconnect_bridge.keystore
+from walletconnect_bridge.time import now
 from walletconnect_bridge.errors import KeystoreWriteError, KeystoreFetchError, WalletConnectPushError, KeystoreTokenExpiredError, KeystoreFcmTokenError
 
 routes = web.RouteTableDef()
@@ -67,8 +67,8 @@ async def update_session(request):
     data = request_json['data']
     redis_conn = get_redis_master(request.app)
     await keystore.add_device_fcm_data(redis_conn, session_id, push_endpoint, fcm_token, expiration_in_seconds=SESSION_EXPIRATION)
-    await keystore.update_device_details(redis_conn, session_id, data, expiration_in_seconds=SESSION_EXPIRATION)
-    session_data = {'ttlInSeconds': SESSION_EXPIRATION}
+    expires_in_seconds = await keystore.update_device_details(redis_conn, session_id, data, expiration_in_seconds=SESSION_EXPIRATION)
+    session_data = {'expiresInSeconds': expires_in_seconds}
     return web.json_response(session_data)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
@@ -85,9 +85,9 @@ async def get_session(request):
   try:
     session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
-    (device_details, ttl_in_seconds) = await keystore.get_device_details(redis_conn, session_id)
+    (device_details, expires_in_seconds) = await keystore.get_device_details(redis_conn, session_id)
     if device_details:
-      session_data = {'data': { 'encryptionPayload': device_details, 'ttlInSeconds': ttl_in_seconds}}
+      session_data = {'data': { 'encryptionPayload': device_details, 'expiresInSeconds': expires_in_seconds}}
       return web.json_response(session_data)
     else:
       return web.Response(status=204)
@@ -118,7 +118,7 @@ async def new_transaction(request):
     transaction_id = str(uuid.uuid4())
     session_id = request.match_info['sessionId']
     data = request_json['data']
-    transaction_data = {'encryptionPayload': data, 'timestamp': time.time()}
+    transaction_data = {'encryptionPayload': data, 'timestamp': now()}
     # TODO could be optional notification details
     dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
