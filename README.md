@@ -48,7 +48,7 @@ make run
 
 For this sample configuration file, the bridge will be available at http://bridge.mydomain.com/ . After specifying bridge.mydomain.com to 0.0.0.0 in /etc/hosts,You can test it at http://bridge.mydomain.com/hello
 
-This approach uses [Certbot](https://certbot.eff.org/) to generate real SSL certificates for your configured nginx hosts. If you would prefer to use the self signed certificates, you can pass the `--skip-certbot` flag to `docker run`.
+This approach uses [Certbot](https://certbot.eff.org/) to generate real SSL certificates for your configured nginx hosts. If you would pre fer to use the self signed certificates, you can pass the `--skip-certbot` flag to `docker run`.
 ```
 $ docker build . -t py-walletconnect-bridge # or `make build`
 $ docker run -it -v $(pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge --skip-certbot # or make run_no_certbot
