@@ -115,7 +115,7 @@ async def get_all_transactions(conn, session_id):
 
 
 async def update_transaction_status(conn, transaction_id, data):
-  key = transaction_hash_key(transaction_id)
+  key = transaction_result_key(transaction_id)
   transaction_status = json.dumps(data)
   success = await write(conn, key, transaction_status)
   if not success:
@@ -123,7 +123,7 @@ async def update_transaction_status(conn, transaction_id, data):
 
 
 async def get_transaction_status(conn, transaction_id):
-  key = transaction_hash_key(transaction_id)
+  key = transaction_result_key(transaction_id)
   encrypted_transaction_status = await conn.get(key)
   if encrypted_transaction_status:
     await conn.delete(key)
@@ -144,8 +144,8 @@ def transaction_key(session_id, transaction_id):
   return 'txn:{}:{}'.format(session_id, transaction_id)
 
 
-def transaction_hash_key(transaction_id):
-  return 'txnhash:{}'.format(transaction_id)
+def transaction_result_key(transaction_id):
+  return 'txnresult:{}'.format(transaction_id)
 
 
 async def write(conn, key, value='', expiration_in_seconds=60*60, write_only_if_exists=False):
