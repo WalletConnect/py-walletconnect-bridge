@@ -186,8 +186,9 @@ async def new_transaction_status(request):
     request_json = await request.json()
     transaction_id = request.match_info['transactionId']
     data = request_json['data']
+    transaction_status_data = {'encryptionPayload': data}
     redis_conn = get_redis_master(request.app)
-    await keystore.update_transaction_status(redis_conn, transaction_id, data)
+    await keystore.update_transaction_status(redis_conn, transaction_id, transaction_status_data)
     return web.Response(status=201)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
