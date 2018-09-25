@@ -79,26 +79,26 @@ async def remove_device_fcm_data(conn, session_id):
   await conn.delete(device_key)
 
 
-async def add_transaction_details(conn, transaction_id, session_id, data, expiration_in_seconds):
-  key = transaction_key(session_id, transaction_id)
-  txn_data = json.dumps(data)
-  success = await write(conn, key, txn_data, expiration_in_seconds)
+async def add_call_details(conn, call_id, session_id, data, expiration_in_seconds):
+  key = call_key(session_id, call_id)
+  call_data = json.dumps(data)
+  success = await write(conn, key, call_data, expiration_in_seconds)
   if not success:
-    raise KeystoreWriteError('Error adding transaction details')
+    raise KeystoreWriteError('Error adding call details')
 
 
-async def get_transaction_details(conn, session_id, transaction_id):
-  key = transaction_key(session_id, transaction_id)
+async def get_call_details(conn, session_id, call_id):
+  key = call_key(session_id, call_id)
   details = await conn.get(key)
   if not details:
-    raise KeystoreFetchError('Error getting transaction details')
+    raise KeystoreFetchError('Error getting call details')
   else:
     await conn.delete(key)
     return json.loads(details)
 
 
-async def get_all_transactions(conn, session_id):
-  key = transaction_key(session_id, '*')
+async def get_all_calls(conn, session_id):
+  key = call_key(session_id, '*')
   all_keys = []
   cur = b'0'  # set initial cursor to 0
   while cur:
@@ -107,27 +107,27 @@ async def get_all_transactions(conn, session_id):
   if not all_keys:
     return {}
   details = await conn.mget(*all_keys)
-  transaction_ids = map(lambda x: x.split(':')[2], all_keys)
-  zipped_results = dict(zip(transaction_ids, details))
+  call_ids = map(lambda x: x.split(':')[2], all_keys)
+  zipped_results = dict(zip(call_ids, details))
   filtered_results = {k: json.loads(v) for k, v in zipped_results.items() if v}
   await conn.delete(*all_keys)
   return filtered_results
 
 
-async def update_transaction_status(conn, transaction_id, data):
-  key = transaction_result_key(transaction_id)
-  transaction_status = json.dumps(data)
-  success = await write(conn, key, transaction_status)
+async def update_call_status(conn, call_id, data):
+  key = call_result_key(call_id)
+  call_status = json.dumps(data)
+  success = await write(conn, key, call_status)
   if not success:
-    raise KeystoreWriteError('Error adding transaction status')
+    raise KeystoreWriteError('Error adding call status')
 
 
-async def get_transaction_status(conn, transaction_id):
-  key = transaction_result_key(transaction_id)
-  encrypted_transaction_status = await conn.get(key)
-  if encrypted_transaction_status:
+async def get_call_status(conn, call_id):
+  key = call_result_key(call_id)
+  encrypted_call_status = await conn.get(key)
+  if encrypted_call_status:
     await conn.delete(key)
-    return json.loads(encrypted_transaction_status)
+    return json.loads(encrypted_call_status)
   else:
     return None
 
@@ -140,12 +140,12 @@ def fcm_device_key(session_id):
   return 'fcmdevice:{}'.format(session_id)
 
 
-def transaction_key(session_id, transaction_id):
-  return 'txn:{}:{}'.format(session_id, transaction_id)
+def call_key(session_id, call_id):
+  return 'call:{}:{}'.format(session_id, call_id)
 
 
-def transaction_result_key(transaction_id):
-  return 'txnresult:{}'.format(transaction_id)
+def call_result_key(call_id):
+  return 'callresult:{}'.format(call_id)
 
 
 async def write(conn, key, value='', expiration_in_seconds=60*60, write_only_if_exists=False):

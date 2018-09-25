@@ -111,23 +111,23 @@ async def remove_session(request):
     return web.json_response(error_message('Error unknown'), status=500)
 
 
-@routes.post('/session/{sessionId}/transaction/new')
-async def new_transaction(request):
+@routes.post('/session/{sessionId}/call/new')
+async def new_call(request):
   try:
     request_json = await request.json()
-    transaction_id = str(uuid.uuid4())
+    call_id = str(uuid.uuid4())
     session_id = request.match_info['sessionId']
     data = request_json['data']
-    transaction_data = {'encryptionPayload': data, 'timestamp': now()}
+    call_data = {'encryptionPayload': data, 'timestamp': now()}
     # TODO could be optional notification details
     dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_transaction_details(redis_conn, transaction_id, session_id, transaction_data, expiration_in_seconds=TX_DETAILS_EXPIRATION)
+    await keystore.add_call_details(redis_conn, call_id, session_id, call_data, expiration_in_seconds=TX_DETAILS_EXPIRATION)
     # Notify wallet push endpoint
     fcm_data = await keystore.get_device_fcm_data(redis_conn, session_id)
     session = request.app[SESSION]
-    await send_push_request(session, fcm_data, session_id, transaction_id, dapp_name)
-    data_message = {'transactionId': transaction_id}
+    await send_push_request(session, fcm_data, session_id, call_id, dapp_name)
+    data_message = {'callId': call_id}
     return web.json_response(data_message, status=201)
   except KeystoreFcmTokenError:
     return web.json_response(error_message('FCM token for this session is no longer available'), status=500)
@@ -143,13 +143,13 @@ async def new_transaction(request):
       return web.json_response(error_message('Error unknown'), status=500)
 
 
-@routes.get('/session/{sessionId}/transaction/{transactionId}')
-async def get_transaction(request):
+@routes.get('/session/{sessionId}/call/{callId}')
+async def get_call(request):
   try:
     session_id = request.match_info['sessionId']
-    transaction_id = request.match_info['transactionId']
+    call_id = request.match_info['callId']
     redis_conn = get_redis_master(request.app)
-    details = await keystore.get_transaction_details(redis_conn, session_id, transaction_id)
+    details = await keystore.get_call_details(redis_conn, session_id, call_id)
     json_response = {'data': details}
     return web.json_response(json_response)
   except KeyError:
@@ -157,17 +157,17 @@ async def get_transaction(request):
   except TypeError:
     return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except KeystoreFetchError:
-    return web.json_response(error_message('Error retrieving transaction details'), status=500)
+    return web.json_response(error_message('Error retrieving call details'), status=500)
   except:
     return web.json_response(error_message('Error unknown'), status=500)
 
 
-@routes.get('/session/{sessionId}/transactions')
-async def get_all_transactions(request):
+@routes.get('/session/{sessionId}/calls')
+async def get_all_calls(request):
   try:
     session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
-    details = await keystore.get_all_transactions(redis_conn, session_id)
+    details = await keystore.get_all_calls(redis_conn, session_id)
     json_response = {'data': details}
     return web.json_response(json_response)
   except KeyError:
@@ -175,20 +175,20 @@ async def get_all_transactions(request):
   except TypeError:
     return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except KeystoreFetchError:
-    return web.json_response(error_message('Error retrieving transaction details'), status=500)
+    return web.json_response(error_message('Error retrieving call details'), status=500)
   except:
     return web.json_response(error_message('Error unknown'), status=500)
 
 
-@routes.post('/transaction-status/{transactionId}/new')
-async def new_transaction_status(request):
+@routes.post('/call-status/{callId}/new')
+async def new_call_status(request):
   try:
     request_json = await request.json()
-    transaction_id = request.match_info['transactionId']
+    call_id = request.match_info['callId']
     data = request_json['data']
-    transaction_status_data = {'encryptionPayload': data}
+    call_status_data = {'encryptionPayload': data}
     redis_conn = get_redis_master(request.app)
-    await keystore.update_transaction_status(redis_conn, transaction_id, transaction_status_data)
+    await keystore.update_call_status(redis_conn, call_id, call_status_data)
     return web.Response(status=201)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
@@ -198,14 +198,14 @@ async def new_transaction_status(request):
       return web.json_response(error_message('Error unknown'), status=500)
 
 
-@routes.get('/transaction-status/{transactionId}')
-async def get_transaction_status(request):
+@routes.get('/call-status/{callId}')
+async def get_call_status(request):
   try:
-    transaction_id = request.match_info['transactionId']
+    call_id = request.match_info['callId']
     redis_conn = get_redis_master(request.app)
-    transaction_status = await keystore.get_transaction_status(redis_conn, transaction_id)
-    if transaction_status:
-      json_response = {'data': transaction_status}
+    call_status = await keystore.get_call_status(redis_conn, call_id)
+    if call_status:
+      json_response = {'data': call_status}
       return web.json_response(json_response)
     else:
       return web.Response(status=204)
@@ -215,12 +215,12 @@ async def get_transaction_status(request):
     return web.json_response(error_message('Error unknown'), status=500)
 
 
-async def send_push_request(session, fcm_data, session_id, transaction_id, dapp_name):
+async def send_push_request(session, fcm_data, session_id, call_id, dapp_name):
   fcm_token = fcm_data['fcm_token']
   push_endpoint = fcm_data['push_endpoint']
   payload = {
     'sessionId': session_id,
-    'transactionId': transaction_id,
+    'callId': call_id,
     'fcmToken': fcm_token,
     'dappName': dapp_name
   }
