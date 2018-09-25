@@ -118,6 +118,7 @@ async def new_call(request):
     call_id = str(uuid.uuid4())
     session_id = request.match_info['sessionId']
     data = request_json['data']
+    call_method = request_json['method']
     call_data = {'encryptionPayload': data, 'timestamp': now()}
     # TODO could be optional notification details
     dapp_name = request_json['dappName']
@@ -126,7 +127,7 @@ async def new_call(request):
     # Notify wallet push endpoint
     fcm_data = await keystore.get_device_fcm_data(redis_conn, session_id)
     session = request.app[SESSION]
-    await send_push_request(session, fcm_data, session_id, call_id, dapp_name)
+    await send_push_request(session, fcm_data, session_id, call_method, call_id, dapp_name)
     data_message = {'callId': call_id}
     return web.json_response(data_message, status=201)
   except KeystoreFcmTokenError:
@@ -215,11 +216,12 @@ async def get_call_status(request):
     return web.json_response(error_message('Error unknown'), status=500)
 
 
-async def send_push_request(session, fcm_data, session_id, call_id, dapp_name):
+async def send_push_request(session, fcm_data, session_id, call_method, call_id, dapp_name):
   fcm_token = fcm_data['fcm_token']
   push_endpoint = fcm_data['push_endpoint']
   payload = {
     'sessionId': session_id,
+    'callMethod': call_method,
     'callId': call_id,
     'fcmToken': fcm_token,
     'dappName': dapp_name
