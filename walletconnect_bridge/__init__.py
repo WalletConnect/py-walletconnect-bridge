@@ -36,7 +36,7 @@ def get_redis_master(app):
 
 @routes.get('/hello')
 async def hello(request):
-  return web.Response(text='hello world, this is Wallet Connect')
+  return web.Response(text='Hello World, this is WalletConnect')
 
 
 @routes.post('/session/new')
