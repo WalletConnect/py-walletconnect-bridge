@@ -67,8 +67,8 @@ async def update_session(request):
     data = request_json['data']
     redis_conn = get_redis_master(request.app)
     await keystore.add_device_fcm_data(redis_conn, session_id, push_endpoint, fcm_token, expiration_in_seconds=SESSION_EXPIRATION)
-    expires_in_seconds = await keystore.update_device_details(redis_conn, session_id, data, expiration_in_seconds=SESSION_EXPIRATION)
-    session_data = {'expiresInSeconds': expires_in_seconds}
+    expires = await keystore.update_device_details(redis_conn, session_id, data, expiration_in_seconds=SESSION_EXPIRATION)
+    session_data = {'expires': expires}
     return web.json_response(session_data)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
@@ -85,9 +85,9 @@ async def get_session(request):
   try:
     session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
-    (device_details, expires_in_seconds) = await keystore.get_device_details(redis_conn, session_id)
+    (device_details, expires) = await keystore.get_device_details(redis_conn, session_id)
     if device_details:
-      session_data = {'data': { 'encryptionPayload': device_details, 'expiresInSeconds': expires_in_seconds}}
+      session_data = {'data': { 'encryptionPayload': device_details, 'expires': expires}}
       return web.json_response(session_data)
     else:
       return web.Response(status=204)
