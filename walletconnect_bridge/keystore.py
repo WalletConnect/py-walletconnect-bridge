@@ -2,7 +2,7 @@ import aioredis
 import json
 
 from walletconnect_bridge.time import get_expiration_time
-from walletconnect_bridge.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, KeystoreFcmTokenError
+from walletconnect_bridge.errors import KeystoreWriteError, KeystoreFetchError, KeystoreTokenExpiredError, KeystorePushTokenError
 
 async def create_connection(event_loop, host='localhost', port=6379, db=0):
   redis_uri = 'redis://{}:{}/{}'.format(host, port, db)
@@ -19,7 +19,7 @@ async def create_sentinel_connection(event_loop, sentinels):
   return sentinel
 
 
-async def add_request_for_device_details(conn, session_id, expiration_in_seconds):
+async def add_request_for_session_details(conn, session_id, expiration_in_seconds):
   key = session_key(session_id)
   success = await write(conn, key, '', expiration_in_seconds)
   if not success:
@@ -27,10 +27,10 @@ async def add_request_for_device_details(conn, session_id, expiration_in_seconds
 
 
 
-async def update_device_details(conn, session_id, data, expiration_in_seconds):
+async def update_session_details(conn, session_id, data, expiration_in_seconds):
   key = session_key(session_id)
-  device_data = json.dumps(data)
-  success = await write(conn, key, device_data, expiration_in_seconds, write_only_if_exists=True)
+  session_data = json.dumps(data)
+  success = await write(conn, key, session_data, expiration_in_seconds, write_only_if_exists=True)
   expires = get_expiration_time(ttl_in_seconds=expiration_in_seconds)
   if not success:
     raise KeystoreTokenExpiredError
@@ -38,7 +38,7 @@ async def update_device_details(conn, session_id, data, expiration_in_seconds):
 
 
 
-async def get_device_details(conn, session_id):
+async def get_session_details(conn, session_id):
   key = session_key(session_id)
   details = await conn.get(key)
   if details:
@@ -49,34 +49,33 @@ async def get_device_details(conn, session_id):
     return (None, 0)
 
 
-async def remove_device_details(conn, session_id):
+async def remove_session_details(conn, session_id):
   key = session_key(session_id)
   await conn.delete(key)
 
 
-async def add_device_fcm_data(conn, session_id, push_endpoint, fcm_token, expiration_in_seconds):
+async def add_push_data(conn, session_id, push_data, expiration_in_seconds):
   # TODO what if we want push_endpoint to be null?
-  key = fcm_device_key(session_id)
-  data = {'fcm_token': fcm_token, 'push_endpoint': push_endpoint}
-  fcm_data = json.dumps(data)
-  success = await write(conn, key, fcm_data, expiration_in_seconds)
+  key = push_session_key(session_id)
+  data = json.dumps(push_data)
+  success = await write(conn, key, data, expiration_in_seconds)
   expires = get_expiration_time(ttl_in_seconds=expiration_in_seconds)
   if not success:
-    raise KeystoreWriteError('Could not write device FCM data')
+    raise KeystoreWriteError('Could not write session Push data')
   return expires_in_seconds
 
 
-async def get_device_fcm_data(conn, session_id):
-  device_key = fcm_device_key(session_id)
-  data = await conn.get(device_key)
+async def get_push_data(conn, session_id):
+  session_key = push_session_key(session_id)
+  data = await conn.get(session_key)
   if not data:
-    raise KeystoreFcmTokenError
+    raise KeystorePushTokenError
   return json.loads(data)
 
 
-async def remove_device_fcm_data(conn, session_id):
-  device_key = fcm_device_key(session_id)
-  await conn.delete(device_key)
+async def remove_push_data(conn, session_id):
+  session_key = push_session_key(session_id)
+  await conn.delete(session_key)
 
 
 async def add_call_details(conn, call_id, session_id, data, expiration_in_seconds):
@@ -136,8 +135,8 @@ def session_key(session_id):
   return 'session:{}'.format(session_id)
 
 
-def fcm_device_key(session_id):
-  return 'fcmdevice:{}'.format(session_id)
+def push_session_key(session_id):
+  return 'pushsession:{}'.format(session_id)
 
 
 def call_key(session_id, call_id):

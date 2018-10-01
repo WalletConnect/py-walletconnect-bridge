@@ -10,7 +10,7 @@ class KeystoreTokenExpiredError(Exception):
   pass
 
 
-class KeystoreFcmTokenError(Exception):
+class KeystorePushTokenError(Exception):
   pass
 
 
