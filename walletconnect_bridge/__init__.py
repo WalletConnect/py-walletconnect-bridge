@@ -61,12 +61,10 @@ async def new_session(request):
 async def update_session(request):
   request_json = await request.json()
   try:
-
     session_id = request.match_info['sessionId']
     push_data = request_json['push']
-    approved = request_json['approved']
     data = request_json['encryptionPayload']
-    session_details = {'encryptionPayload': data, approved: approved}
+    session_details = {'encryptionPayload': data}
     redis_conn = get_redis_master(request.app)
     await keystore.add_push_data(redis_conn, session_id, push_data, expiration_in_seconds=SESSION_EXPIRATION)
     expires = await keystore.update_session_details(redis_conn, session_id, data, expiration_in_seconds=SESSION_EXPIRATION)
@@ -89,7 +87,7 @@ async def get_session(request):
     redis_conn = get_redis_master(request.app)
     (session_details, expires) = await keystore.get_session_details(redis_conn, session_id)
     if session_details:
-      session_data = {'data': { 'encryptionPayload': session_details['encryptionPayload'], approved: session_details['approved'], 'expires': expires}}
+      session_data = {'data': { 'encryptionPayload': session_details, 'expires': expires}}
       return web.json_response(session_data)
     else:
       return web.Response(status=204)
