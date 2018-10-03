@@ -15,7 +15,7 @@ from walletconnect_bridge.errors import KeystoreWriteError, KeystoreFetchError, 
 
 routes = web.RouteTableDef()
 
-VERSION = pkg_resources.require("MyProject")[0].version
+WC_VERSION = pkg_resources.require("MyProject")[0].version
 REDIS='org.wallet.connect.redis'
 SESSION='org.wallet.connect.session'
 SENTINEL='sentinel'
@@ -37,12 +37,12 @@ def get_redis_master(app):
 
 @routes.get('/hello')
 async def hello(request):
-  message = 'Hello World, this is WalletConnect v{}'.format(version)
+  message = 'Hello World, this is WalletConnect v{}'.format(WC_VERSION)
   return web.Response(text=message)
 
 @routes.get('/info')
 async def get_info(request):
-  bridge_details = {'name': 'WalletConnect Bridge Server', 'repository': 'py-walletconnect-bridge', 'version': VERSION}
+  bridge_details = {'name': 'WalletConnect Bridge Server', 'repository': 'py-walletconnect-bridge', 'version': WC_VERSION}
   return web.json_response(bridge_details)
 
 @routes.post('/session/new')
