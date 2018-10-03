@@ -13,7 +13,7 @@ renew:
 	make clean && make run
 
 run:
-	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge
+	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge --name py-walletconnect-bridge
 
 run_skip_certbot:
-	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge --skip-certbot
+	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge --name py-walletconnect-bridge --skip-certbot
