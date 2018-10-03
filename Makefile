@@ -3,7 +3,7 @@
 BRANCH=master
 
 default:
-	echo "Available tasks: build, clean, renew, run, run_skip_certbot, update"
+	echo "Available tasks: build, clean, renew, run, run_skip_certbot"
 
 build:
 	docker build . -t py-walletconnect-bridge --build-arg branch=$(BRANCH)
