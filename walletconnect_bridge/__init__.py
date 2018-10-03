@@ -74,7 +74,7 @@ async def update_session(request):
     session_details = {'encryptionPayload': data}
     redis_conn = get_redis_master(request.app)
     await keystore.add_push_data(redis_conn, session_id, push_data, expiration_in_seconds=SESSION_EXPIRATION)
-    expires = await keystore.update_session_details(redis_conn, session_id, data, expiration_in_seconds=SESSION_EXPIRATION)
+    expires = await keystore.update_session_details(redis_conn, session_id, session_details, expiration_in_seconds=SESSION_EXPIRATION)
     session_data = {'expires': expires}
     return web.json_response(session_data)
   except KeyError:
