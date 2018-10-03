@@ -19,15 +19,15 @@ async def create_sentinel_connection(event_loop, sentinels):
   return sentinel
 
 
-async def add_request_for_session_details(conn, session_id, expiration_in_seconds):
+async def add_request_for_session_data(conn, session_id, expiration_in_seconds):
   key = session_key(session_id)
   success = await write(conn, key, '', expiration_in_seconds)
   if not success:
-    raise KeystoreWriteError('Error adding request for details')
+    raise KeystoreWriteError('Error adding request for data')
 
 
 
-async def update_session_details(conn, session_id, data, expiration_in_seconds):
+async def update_session_data(conn, session_id, data, expiration_in_seconds):
   key = session_key(session_id)
   session_data = json.dumps(data)
   success = await write(conn, key, session_data, expiration_in_seconds, write_only_if_exists=True)
@@ -38,18 +38,20 @@ async def update_session_details(conn, session_id, data, expiration_in_seconds):
 
 
 
-async def get_session_details(conn, session_id):
+async def get_session_data(conn, session_id):
   key = session_key(session_id)
-  details = await conn.get(key)
-  if details:
+  data = await conn.get(key)
+  if data:
     ttl_in_seconds = await conn.ttl(key)
     expires = get_expiration_time(ttl_in_seconds)
-    return (json.loads(details), expires)
+    session_data = json.loads(data)
+    session_data['expires'] = expires
+    return session_data
   else:
-    return (None, 0)
+    return None
 
 
-async def remove_session_details(conn, session_id):
+async def remove_session_data(conn, session_id):
   key = session_key(session_id)
   await conn.delete(key)
 
@@ -78,22 +80,22 @@ async def remove_push_data(conn, session_id):
   await conn.delete(session_key)
 
 
-async def add_call_details(conn, call_id, session_id, data, expiration_in_seconds):
+async def add_call_data(conn, call_id, session_id, data, expiration_in_seconds):
   key = call_key(session_id, call_id)
   call_data = json.dumps(data)
   success = await write(conn, key, call_data, expiration_in_seconds)
   if not success:
-    raise KeystoreWriteError('Error adding call details')
+    raise KeystoreWriteError('Error adding call data')
 
 
-async def get_call_details(conn, session_id, call_id):
+async def get_call_data(conn, session_id, call_id):
   key = call_key(session_id, call_id)
-  details = await conn.get(key)
-  if not details:
-    raise KeystoreFetchError('Error getting call details')
+  data = await conn.get(key)
+  if not data:
+    raise KeystoreFetchError('Error getting call data')
   else:
     await conn.delete(key)
-    return json.loads(details)
+    return json.loads(data)
 
 
 async def get_all_calls(conn, session_id):
@@ -105,16 +107,16 @@ async def get_all_calls(conn, session_id):
     all_keys.extend(keys);
   if not all_keys:
     return {}
-  details = await conn.mget(*all_keys)
+  data = await conn.mget(*all_keys)
   call_ids = map(lambda x: x.split(':')[2], all_keys)
-  zipped_results = dict(zip(call_ids, details))
+  zipped_results = dict(zip(call_ids, data))
   filtered_results = {k: json.loads(v) for k, v in zipped_results.items() if v}
   await conn.delete(*all_keys)
   return filtered_results
 
 
 async def update_call_status(conn, call_id, data):
-  key = call_result_key(call_id)
+  key = call_status_key(call_id)
   call_status = json.dumps(data)
   success = await write(conn, key, call_status)
   if not success:
@@ -122,11 +124,11 @@ async def update_call_status(conn, call_id, data):
 
 
 async def get_call_status(conn, call_id):
-  key = call_result_key(call_id)
-  encrypted_call_status = await conn.get(key)
-  if encrypted_call_status:
+  key = call_status_key(call_id)
+  data = await conn.get(key)
+  if data:
     await conn.delete(key)
-    return json.loads(encrypted_call_status)
+    return json.loads(data)
   else:
     return None
 
@@ -143,8 +145,8 @@ def call_key(session_id, call_id):
   return 'call:{}:{}'.format(session_id, call_id)
 
 
-def call_result_key(call_id):
-  return 'callresult:{}'.format(call_id)
+def call_status_key(call_id):
+  return 'callstatus:{}'.format(call_id)
 
 
 async def write(conn, key, value='', expiration_in_seconds=60*60, write_only_if_exists=False):
