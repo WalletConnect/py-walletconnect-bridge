@@ -15,7 +15,7 @@ from walletconnect_bridge.errors import KeystoreWriteError, KeystoreFetchError, 
 
 routes = web.RouteTableDef()
 
-WC_VERSION = pkg_resources.require("MyProject")[0].version
+WC_VERSION = pkg_resources.require("walletconnect-bridge")[0].version
 REDIS='org.wallet.connect.redis'
 SESSION='org.wallet.connect.session'
 SENTINEL='sentinel'
