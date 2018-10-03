@@ -24,7 +24,7 @@ SENTINELS='sentinels'
 HOST='host'
 SERVICE='service'
 SESSION_EXPIRATION = 24*60*60   # 24hrs
-TX_DETAILS_EXPIRATION = 60*60   # 1hr
+CALL_DATA_EXPIRATION = 60*60   # 1hr
 
 def error_message(message):
   return {'message': message}
@@ -43,15 +43,15 @@ async def hello(request):
 
 @routes.get('/info')
 async def get_info(request):
-  bridge_details = {'name': 'WalletConnect Bridge Server', 'repository': 'py-walletconnect-bridge', 'version': WC_VERSION}
-  return web.json_response(bridge_details)
+  bridge_data = {'name': 'WalletConnect Bridge Server', 'repository': 'py-walletconnect-bridge', 'version': WC_VERSION}
+  return web.json_response(bridge_data)
 
 @routes.post('/session/new')
 async def new_session(request):
   try:
     session_id = str(uuid.uuid4())
     redis_conn = get_redis_master(request.app)
-    await keystore.add_request_for_session_details(redis_conn, session_id, expiration_in_seconds=SESSION_EXPIRATION)
+    await keystore.add_request_for_session_data(redis_conn, session_id, expiration_in_seconds=SESSION_EXPIRATION)
     session_data = {'sessionId': session_id}
     return web.json_response(session_data)
   except KeyError:
@@ -70,11 +70,10 @@ async def update_session(request):
   try:
     session_id = request.match_info['sessionId']
     push_data = request_json['push']
-    data = request_json['encryptionPayload']
-    session_details = {'encryptionPayload': data}
+    session_data = {'encryptionPayload': request_json['encryptionPayload']}
     redis_conn = get_redis_master(request.app)
     await keystore.add_push_data(redis_conn, session_id, push_data, expiration_in_seconds=SESSION_EXPIRATION)
-    expires = await keystore.update_session_details(redis_conn, session_id, session_details, expiration_in_seconds=SESSION_EXPIRATION)
+    expires = await keystore.update_session_data(redis_conn, session_id, session_data, expiration_in_seconds=SESSION_EXPIRATION)
     session_data = {'expires': expires}
     return web.json_response(session_data)
   except KeyError:
@@ -92,9 +91,9 @@ async def get_session(request):
   try:
     session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
-    (session_details, expires) = await keystore.get_session_details(redis_conn, session_id)
-    if session_details:
-      session_data = {'data': { 'encryptionPayload': session_details, 'expires': expires}}
+    session_data = await keystore.get_session_data(redis_conn, session_id)
+    if session_data:
+      session_data = {'data': session_data}
       return web.json_response(session_data)
     else:
       return web.Response(status=204)
@@ -112,7 +111,7 @@ async def remove_session(request):
     session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
     await keystore.remove_push_data(redis_conn, session_id)
-    await keystore.remove_session_details(redis_conn, session_id)
+    await keystore.remove_session_data(redis_conn, session_id)
     return web.Response(status=200)
   except:
     return web.json_response(error_message('Error unknown'), status=500)
@@ -124,12 +123,11 @@ async def new_call(request):
     request_json = await request.json()
     call_id = str(uuid.uuid4())
     session_id = request.match_info['sessionId']
-    data = request_json['encryptionPayload']
-    call_data = {'encryptionPayload': data}
-    # TODO could be optional notification details
+    call_data = {'encryptionPayload': request_json['encryptionPayload']}
+    # TODO could be optional notification data
     dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_call_details(redis_conn, call_id, session_id, call_data, expiration_in_seconds=TX_DETAILS_EXPIRATION)
+    await keystore.add_call_data(redis_conn, call_id, session_id, call_data, expiration_in_seconds=CALL_DATA_EXPIRATION)
     # Notify wallet push endpoint
     push_data = await keystore.get_push_data(redis_conn, session_id)
     session = request.app[SESSION]
@@ -145,7 +143,7 @@ async def new_call(request):
   except KeystorePushTokenError:
     return web.json_response(error_message('Error finding Push token for session'), status=500)
   except WalletConnectPushError:
-    return web.json_response(error_message('Error sending message to wallet connect push endpoint'), status=500)
+    return web.json_response(error_message('Error sending message to walletconnect push endpoint'), status=500)
   except:
       return web.json_response(error_message('Error unknown'), status=500)
 
@@ -156,15 +154,15 @@ async def get_call(request):
     session_id = request.match_info['sessionId']
     call_id = request.match_info['callId']
     redis_conn = get_redis_master(request.app)
-    details = await keystore.get_call_details(redis_conn, session_id, call_id)
-    json_response = {'data': details}
+    data = await keystore.get_call_data(redis_conn, session_id, call_id)
+    json_response = {'data': data}
     return web.json_response(json_response)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
     return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except KeystoreFetchError:
-    return web.json_response(error_message('Error retrieving call details'), status=500)
+    return web.json_response(error_message('Error retrieving call data'), status=500)
   except:
     return web.json_response(error_message('Error unknown'), status=500)
 
@@ -174,15 +172,15 @@ async def get_all_calls(request):
   try:
     session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
-    details = await keystore.get_all_calls(redis_conn, session_id)
-    json_response = {'data': details}
+    data = await keystore.get_all_calls(redis_conn, session_id)
+    json_response = {'data': data}
     return web.json_response(json_response)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
     return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except KeystoreFetchError:
-    return web.json_response(error_message('Error retrieving call details'), status=500)
+    return web.json_response(error_message('Error retrieving call data'), status=500)
   except:
     return web.json_response(error_message('Error unknown'), status=500)
 
@@ -192,8 +190,7 @@ async def new_call_status(request):
   try:
     request_json = await request.json()
     call_id = request.match_info['callId']
-    data = request_json['encryptionPayload']
-    call_status_data = {'encryptionPayload': data}
+    call_status_data = {'encryptionPayload': request_json['encryptionPayload']}
     redis_conn = get_redis_master(request.app)
     await keystore.update_call_status(redis_conn, call_id, call_status_data)
     return web.Response(status=201)
@@ -210,9 +207,9 @@ async def get_call_status(request):
   try:
     call_id = request.match_info['callId']
     redis_conn = get_redis_master(request.app)
-    call_status = await keystore.get_call_status(redis_conn, call_id)
+    data = await keystore.get_call_status(redis_conn, call_id)
     if call_status:
-      json_response = {'data': call_status}
+      json_response = {'data': data}
       return web.json_response(json_response)
     else:
       return web.Response(status=204)

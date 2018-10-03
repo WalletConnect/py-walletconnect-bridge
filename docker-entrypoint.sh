@@ -6,12 +6,12 @@ rm -rf /etc/nginx/sites-enabled
 ln -s /source/nginx /etc/nginx/sites-enabled
 ln -s /source/ssl /keys
 
-#starting local instance of redis server and starting wallet connect bridge connected to local redis
+#starting local instance of redis server and starting walletconnect bridge connected to local redis
 redis-server &
 echo "started redis server"
 sleep 5
 walletconnect-bridge --port 8080 --host 0.0.0.0 &
-echo "started wallet connect server"
+echo "started walletconnect server"
 
 #key generation
 FILE="/keys/key.pem"
