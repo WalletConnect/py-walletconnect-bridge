@@ -3,6 +3,7 @@ import argparse
 import uuid
 import asyncio
 import aiohttp
+import pkg_resources
 from aiohttp import web
 try:
   import uvloop
