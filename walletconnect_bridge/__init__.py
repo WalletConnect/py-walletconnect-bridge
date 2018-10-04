@@ -121,13 +121,13 @@ async def remove_session(request):
 async def new_call(request):
   try:
     request_json = await request.json()
-    call_id = str(uuid.uuid4())
     session_id = request.match_info['sessionId']
+    call_id = str(uuid.uuid4())
     call_data = {'encryptionPayload': request_json['encryptionPayload']}
     # TODO could be optional notification data
     dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_call_data(redis_conn, call_id, session_id, call_data, expiration_in_seconds=CALL_DATA_EXPIRATION)
+    await keystore.add_call_data(redis_conn, session_id, call_id, call_data, expiration_in_seconds=CALL_DATA_EXPIRATION)
     # Notify wallet push endpoint
     push_data = await keystore.get_push_data(redis_conn, session_id)
     session = request.app[SESSION]
