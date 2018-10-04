@@ -27,10 +27,10 @@ async def add_request_for_session_data(conn, session_id, expiration_in_seconds):
 
 
 
-async def update_session_data(conn, session_id, data, expiration_in_seconds):
+async def update_session_data(conn, session_id, session_data, expiration_in_seconds):
   key = session_key(session_id)
-  session_data = json.dumps(data)
-  success = await write(conn, key, session_data, expiration_in_seconds, write_only_if_exists=True)
+  data = json.dumps(session_data)
+  success = await write(conn, key, data, expiration_in_seconds, write_only_if_exists=True)
   expires = get_expiration_time(ttl_in_seconds=expiration_in_seconds)
   if not success:
     raise KeystoreTokenExpiredError
@@ -64,7 +64,7 @@ async def add_push_data(conn, session_id, push_data, expiration_in_seconds):
   expires = get_expiration_time(ttl_in_seconds=expiration_in_seconds)
   if not success:
     raise KeystoreWriteError('Could not write session Push data')
-  return expires_in_seconds
+  return expires
 
 
 async def get_push_data(conn, session_id):
@@ -80,10 +80,10 @@ async def remove_push_data(conn, session_id):
   await conn.delete(session_key)
 
 
-async def add_call_data(conn, call_id, session_id, data, expiration_in_seconds):
+async def add_call_data(conn, session_id, call_id, call_data, expiration_in_seconds):
   key = call_key(session_id, call_id)
-  call_data = json.dumps(data)
-  success = await write(conn, key, call_data, expiration_in_seconds)
+  data = json.dumps(call_data)
+  success = await write(conn, key, data, expiration_in_seconds)
   if not success:
     raise KeystoreWriteError('Error adding call data')
 
@@ -115,10 +115,10 @@ async def get_all_calls(conn, session_id):
   return filtered_results
 
 
-async def update_call_status(conn, call_id, data):
+async def update_call_status(conn, call_id, call_status):
   key = call_status_key(call_id)
-  call_status = json.dumps(data)
-  success = await write(conn, key, call_status)
+  data = json.dumps(call_status)
+  success = await write(conn, key, data)
   if not success:
     raise KeystoreWriteError('Error adding call status')
 
