@@ -64,7 +64,7 @@ async def add_push_data(conn, session_id, push_data, expiration_in_seconds):
   expires = get_expiration_time(ttl_in_seconds=expiration_in_seconds)
   if not success:
     raise KeystoreWriteError('Could not write session Push data')
-  return expires_in_seconds
+  return expires
 
 
 async def get_push_data(conn, session_id):
