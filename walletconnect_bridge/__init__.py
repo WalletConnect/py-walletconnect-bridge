@@ -207,7 +207,7 @@ async def get_call_status(request):
   try:
     call_id = request.match_info['callId']
     redis_conn = get_redis_master(request.app)
-    data = await keystore.get_call_status(redis_conn, call_id)
+    call_status = await keystore.get_call_status(redis_conn, call_id)
     if call_status:
       json_response = {'data': data}
       return web.json_response(json_response)
