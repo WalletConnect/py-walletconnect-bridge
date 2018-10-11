@@ -154,8 +154,8 @@ async def get_call(request):
     session_id = request.match_info['sessionId']
     call_id = request.match_info['callId']
     redis_conn = get_redis_master(request.app)
-    data = await keystore.get_call_data(redis_conn, session_id, call_id)
-    json_response = {'data': data}
+    call_data = await keystore.get_call_data(redis_conn, session_id, call_id)
+    json_response = {'data': call_data}
     return web.json_response(json_response)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
@@ -172,8 +172,8 @@ async def get_all_calls(request):
   try:
     session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
-    data = await keystore.get_all_calls(redis_conn, session_id)
-    json_response = {'data': data}
+    all_calls = await keystore.get_all_calls(redis_conn, session_id)
+    json_response = {'data': all_calls}
     return web.json_response(json_response)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
@@ -209,7 +209,7 @@ async def get_call_status(request):
     redis_conn = get_redis_master(request.app)
     call_status = await keystore.get_call_status(redis_conn, call_id)
     if call_status:
-      json_response = {'data': data}
+      json_response = {'data': call_status}
       return web.json_response(json_response)
     else:
       return web.Response(status=204)
