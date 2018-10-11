@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
   name='walletconnect-bridge',
-  version='0.7.3',
+  version='0.7.5',
   install_requires=[
     'aiohttp',
     'aioredis',
