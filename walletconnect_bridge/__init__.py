@@ -3,6 +3,7 @@ import argparse
 import uuid
 import asyncio
 import aiohttp
+import pkg_resources
 from aiohttp import web
 try:
   import uvloop
@@ -11,10 +12,11 @@ except ModuleNotFoundError:
 
 import walletconnect_bridge.keystore
 from walletconnect_bridge.time import now
-from walletconnect_bridge.errors import KeystoreWriteError, KeystoreFetchError, WalletConnectPushError, KeystoreTokenExpiredError, KeystoreFcmTokenError
+from walletconnect_bridge.errors import KeystoreWriteError, KeystoreFetchError, WalletConnectPushError, KeystoreTokenExpiredError, KeystorePushTokenError
 
 routes = web.RouteTableDef()
 
+WC_VERSION = pkg_resources.require("walletconnect-bridge")[0].version
 REDIS='org.wallet.connect.redis'
 SESSION='org.wallet.connect.session'
 SENTINEL='sentinel'
@@ -22,7 +24,7 @@ SENTINELS='sentinels'
 HOST='host'
 SERVICE='service'
 SESSION_EXPIRATION = 24*60*60   # 24hrs
-TX_DETAILS_EXPIRATION = 60*60   # 1hr
+CALL_DATA_EXPIRATION = 60*60   # 1hr
 
 def error_message(message):
   return {'message': message}
@@ -36,15 +38,20 @@ def get_redis_master(app):
 
 @routes.get('/hello')
 async def hello(request):
-  return web.Response(text='hello world, this is Wallet Connect')
+  message = 'Hello World, this is WalletConnect v{}'.format(WC_VERSION)
+  return web.Response(text=message)
 
+@routes.get('/info')
+async def get_info(request):
+  bridge_data = {'name': 'WalletConnect Bridge Server', 'repository': 'py-walletconnect-bridge', 'version': WC_VERSION}
+  return web.json_response(bridge_data)
 
 @routes.post('/session/new')
 async def new_session(request):
   try:
     session_id = str(uuid.uuid4())
     redis_conn = get_redis_master(request.app)
-    await keystore.add_request_for_device_details(redis_conn, session_id, expiration_in_seconds=SESSION_EXPIRATION)
+    await keystore.add_request_for_session_data(redis_conn, session_id, expiration_in_seconds=SESSION_EXPIRATION)
     session_data = {'sessionId': session_id}
     return web.json_response(session_data)
   except KeyError:
@@ -62,13 +69,12 @@ async def update_session(request):
   request_json = await request.json()
   try:
     session_id = request.match_info['sessionId']
-    fcm_token = request_json['fcmToken']
-    push_endpoint = request_json['pushEndpoint']
-    data = request_json['data']
+    push_data = request_json['push']
+    session_data = {'encryptionPayload': request_json['encryptionPayload']}
     redis_conn = get_redis_master(request.app)
-    await keystore.add_device_fcm_data(redis_conn, session_id, push_endpoint, fcm_token, expiration_in_seconds=SESSION_EXPIRATION)
-    expires_in_seconds = await keystore.update_device_details(redis_conn, session_id, data, expiration_in_seconds=SESSION_EXPIRATION)
-    session_data = {'expiresInSeconds': expires_in_seconds}
+    await keystore.add_push_data(redis_conn, session_id, push_data, expiration_in_seconds=SESSION_EXPIRATION)
+    expires = await keystore.update_session_data(redis_conn, session_id, session_data, expiration_in_seconds=SESSION_EXPIRATION)
+    session_data = {'expires': expires}
     return web.json_response(session_data)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
@@ -85,9 +91,9 @@ async def get_session(request):
   try:
     session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
-    (device_details, expires_in_seconds) = await keystore.get_device_details(redis_conn, session_id)
-    if device_details:
-      session_data = {'data': { 'encryptionPayload': device_details, 'expiresInSeconds': expires_in_seconds}}
+    session_data = await keystore.get_session_data(redis_conn, session_id)
+    if session_data:
+      session_data = {'data': session_data}
       return web.json_response(session_data)
     else:
       return web.Response(status=204)
@@ -104,91 +110,89 @@ async def remove_session(request):
   try:
     session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
-    await keystore.remove_device_fcm_data(redis_conn, session_id)
-    await keystore.remove_device_details(redis_conn, session_id)
+    await keystore.remove_push_data(redis_conn, session_id)
+    await keystore.remove_session_data(redis_conn, session_id)
     return web.Response(status=200)
   except:
     return web.json_response(error_message('Error unknown'), status=500)
 
 
-@routes.post('/session/{sessionId}/transaction/new')
-async def new_transaction(request):
+@routes.post('/session/{sessionId}/call/new')
+async def new_call(request):
   try:
     request_json = await request.json()
-    transaction_id = str(uuid.uuid4())
     session_id = request.match_info['sessionId']
-    data = request_json['data']
-    transaction_data = {'encryptionPayload': data, 'timestamp': now()}
-    # TODO could be optional notification details
+    call_id = str(uuid.uuid4())
+    call_data = {'encryptionPayload': request_json['encryptionPayload']}
+    # TODO could be optional notification data
     dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
-    await keystore.add_transaction_details(redis_conn, transaction_id, session_id, transaction_data, expiration_in_seconds=TX_DETAILS_EXPIRATION)
+    await keystore.add_call_data(redis_conn, session_id, call_id, call_data, expiration_in_seconds=CALL_DATA_EXPIRATION)
     # Notify wallet push endpoint
-    fcm_data = await keystore.get_device_fcm_data(redis_conn, session_id)
+    push_data = await keystore.get_push_data(redis_conn, session_id)
     session = request.app[SESSION]
-    await send_push_request(session, fcm_data, session_id, transaction_id, dapp_name)
-    data_message = {'transactionId': transaction_id}
+    await send_push_request(session, push_data, session_id, call_id, dapp_name)
+    data_message = {'callId': call_id}
     return web.json_response(data_message, status=201)
-  except KeystoreFcmTokenError:
-    return web.json_response(error_message('FCM token for this session is no longer available'), status=500)
+  except KeystorePushTokenError:
+    return web.json_response(error_message('Push token for this session is no longer available'), status=500)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
     return web.json_response(error_message('Incorrect JSON content type'), status=400)
-  except KeystoreFcmTokenError:
-    return web.json_response(error_message('Error finding FCM token for device'), status=500)
+  except KeystorePushTokenError:
+    return web.json_response(error_message('Error finding Push token for session'), status=500)
   except WalletConnectPushError:
-    return web.json_response(error_message('Error sending message to wallet connect push endpoint'), status=500)
+    return web.json_response(error_message('Error sending message to walletconnect push endpoint'), status=500)
   except:
       return web.json_response(error_message('Error unknown'), status=500)
 
 
-@routes.get('/session/{sessionId}/transaction/{transactionId}')
-async def get_transaction(request):
+@routes.get('/session/{sessionId}/call/{callId}')
+async def get_call(request):
   try:
     session_id = request.match_info['sessionId']
-    transaction_id = request.match_info['transactionId']
+    call_id = request.match_info['callId']
     redis_conn = get_redis_master(request.app)
-    details = await keystore.get_transaction_details(redis_conn, session_id, transaction_id)
-    json_response = {'data': details}
+    call_data = await keystore.get_call_data(redis_conn, session_id, call_id)
+    json_response = {'data': call_data}
     return web.json_response(json_response)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
     return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except KeystoreFetchError:
-    return web.json_response(error_message('Error retrieving transaction details'), status=500)
+    return web.json_response(error_message('Error retrieving call data'), status=500)
   except:
     return web.json_response(error_message('Error unknown'), status=500)
 
 
-@routes.get('/session/{sessionId}/transactions')
-async def get_all_transactions(request):
+@routes.get('/session/{sessionId}/calls')
+async def get_all_calls(request):
   try:
     session_id = request.match_info['sessionId']
     redis_conn = get_redis_master(request.app)
-    details = await keystore.get_all_transactions(redis_conn, session_id)
-    json_response = {'data': details}
+    all_calls = await keystore.get_all_calls(redis_conn, session_id)
+    json_response = {'data': all_calls}
     return web.json_response(json_response)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
   except TypeError:
     return web.json_response(error_message('Incorrect JSON content type'), status=400)
   except KeystoreFetchError:
-    return web.json_response(error_message('Error retrieving transaction details'), status=500)
+    return web.json_response(error_message('Error retrieving call data'), status=500)
   except:
     return web.json_response(error_message('Error unknown'), status=500)
 
 
-@routes.post('/transaction-status/{transactionId}/new')
-async def new_transaction_status(request):
+@routes.post('/call-status/{callId}/new')
+async def new_call_status(request):
   try:
     request_json = await request.json()
-    transaction_id = request.match_info['transactionId']
-    data = request_json['data']
-    transaction_status_data = {'encryptionPayload': data}
+    call_id = request.match_info['callId']
+    call_status_data = {'encryptionPayload': request_json['encryptionPayload']}
     redis_conn = get_redis_master(request.app)
-    await keystore.update_transaction_status(redis_conn, transaction_id, transaction_status_data)
+    await keystore.update_call_status(redis_conn, call_id, call_status_data)
     return web.Response(status=201)
   except KeyError:
     return web.json_response(error_message('Incorrect input parameters'), status=400)
@@ -198,14 +202,14 @@ async def new_transaction_status(request):
       return web.json_response(error_message('Error unknown'), status=500)
 
 
-@routes.get('/transaction-status/{transactionId}')
-async def get_transaction_status(request):
+@routes.get('/call-status/{callId}')
+async def get_call_status(request):
   try:
-    transaction_id = request.match_info['transactionId']
+    call_id = request.match_info['callId']
     redis_conn = get_redis_master(request.app)
-    transaction_status = await keystore.get_transaction_status(redis_conn, transaction_id)
-    if transaction_status:
-      json_response = {'data': transaction_status}
+    call_status = await keystore.get_call_status(redis_conn, call_id)
+    if call_status:
+      json_response = {'data': call_status}
       return web.json_response(json_response)
     else:
       return web.Response(status=204)
@@ -215,13 +219,15 @@ async def get_transaction_status(request):
     return web.json_response(error_message('Error unknown'), status=500)
 
 
-async def send_push_request(session, fcm_data, session_id, transaction_id, dapp_name):
-  fcm_token = fcm_data['fcm_token']
-  push_endpoint = fcm_data['push_endpoint']
+async def send_push_request(session, push_data, session_id, call_id, dapp_name):
+  push_type = push_data['type']
+  push_token = push_data['token']
+  push_endpoint = push_data['endpoint']
   payload = {
     'sessionId': session_id,
-    'transactionId': transaction_id,
-    'fcmToken': fcm_token,
+    'callId': call_id,
+    'pushType': push_type,
+    'pushToken': push_token,
     'dappName': dapp_name
   }
   headers = {'Content-Type': 'application/json'}

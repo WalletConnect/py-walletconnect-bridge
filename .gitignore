@@ -6,3 +6,4 @@ __pycache__/
 ssl/*.pem
 ssl/certbot/*
 !ssl/certbot/.keep
+.vscode

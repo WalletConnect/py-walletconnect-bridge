@@ -1,10 +1,12 @@
 # make targets for WalletConnect/py-walletconnect-bridge
 
+BRANCH=master
+
 default:
 	echo "Available tasks: build, clean, renew, run, run_skip_certbot, update"
 
 build:
-	docker build . -t py-walletconnect-bridge
+	docker build . -t py-walletconnect-bridge --build-arg branch=$(BRANCH)
 
 clean:
 	sudo rm -rfv ssl/certbot/*

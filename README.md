@@ -1,11 +1,12 @@
 # WalletConnect Bridge Python Implementation
+
 A full introduction is described in our docs: https://docs.walletconnect.org/technical-specification
 
 ## Pre-requirements
 
-1. Python
-2. Docker (for Docker setup)
-3. Make (for Make commands)
+1.  Python
+2.  Docker (for Docker setup)
+3.  Make (for Make commands)
 
 ## Docker setup
 
@@ -16,13 +17,13 @@ A full introduction is described in our docs: https://docs.walletconnect.org/tec
 ```
 
 **Step 1.** Change the domain name on the `nginx/defaultConf` file
+
 ```bash
 L4    server_name bridge.mydomain.com;
 
 L10   server_name bridge.mydomain.com;
 
 L28   proxy_redirect             http://0.0.0.0:8080 http://bridge.mydomain.com;
-
 ```
 
 **Step 2.** Run the following command to build the Docker image
@@ -36,6 +37,7 @@ $ make build
 ```
 
 **Step 3.** Finally run the following command to run the Docker container
+
 ```bash
 $ docker run -it -v $(pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge
 
@@ -47,6 +49,16 @@ $ make run
 You can test it at http://bridge.mydomain.com/hello
 
 **Notes**
+
+This setup defaults to `master` branch in order to build a Docker image from another branch, run the following command:
+
+```bash
+$ docker build . -t py-walletconnect-bridge --build-arg branch=develop
+
+# OR
+
+$ make build BRANCH=develop
+```
 
 For this sample configuration file, the bridge will be available at http://bridge.mydomain.com/ . After specifying bridge.mydomain.com to 0.0.0.0 in /etc/hosts,
 
@@ -65,11 +77,13 @@ Certbot certificates expire after 90 days. To renew, shut down the docker proces
 ## Manual setup
 
 If you'd like to keep a separate Python environment for this project's installs, set up virtualenv
+
 ```
 $ pip install virtualenv virtualenvwrapper
 ```
 
 Add the following to your ~/.bashrc
+
 ```
 export WORKON_HOME=$HOME/.virtualenvs~
 export PROJECT_HOME=$HOME/Devel
@@ -78,6 +92,7 @@ source /usr/local/bin/virtualenvwrapper.sh
 ```
 
 From the project directory, run these commands to install the walletconnect-bridge package in a virtualenv called "walletconnect-bridge"
+
 ```
 $ mkvirtualenv walletconnect-bridge
 $ pip install -r requirements.txt
@@ -85,16 +100,19 @@ $ python setup.py develop
 ```
 
 In another terminal, start local Redis instance
+
 ```
 $ redis-server
 ```
 
 Run the project locally
+
 ```
 $ walletconnect-bridge --redis-local
 ```
 
 Test your Bridge is working
+
 ```
 $ curl http://bridge.mydomain.com/hello
 ```
