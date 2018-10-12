@@ -21,11 +21,14 @@ run_skip_certbot:
 	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" py-walletconnect-bridge --skip-certbot
 
 update:
+	# remove existing image and build new one
+	docker rmi py-walletconnect-bridge
+	docker build . -t py-walletconnect-bridge --build-arg branch=$(BRANCH)
+
 	# save current state of DB and copy it to local machine
 	docker exec py-walletconnect-bridge redis-cli SAVE
 	docker cp py-walletconnect-bridge:/py-walletconnect-bridge/dump.rdb dump.rdb
-	docker container stop py-walletconnect-bridge
-	docker container rm py-walletconnect-bridge
+	docker container rm -f py-walletconnect-bridge
 	
 	# start the container with `-d` to run in background
 	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" -d py-walletconnect-bridge
