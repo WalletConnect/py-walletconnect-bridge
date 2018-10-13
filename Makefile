@@ -34,8 +34,8 @@ update:
 	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" -d py-walletconnect-bridge
 	
 	# stop the redis server, copy the previous state and restart the server
-	docker exec py-walletconnect-bridge service redis-server stop
+	docker exec py-walletconnect-bridge redis-cli SHUTDOWN
 	docker cp dump.rdb py-walletconnect-bridge:/py-walletconnect-bridge/dump.rdb
 	docker exec py-walletconnect-bridge chown redis: /py-walletconnect-bridge/dump.rdb
-	docker exec py-walletconnect-bridge service redis-server start
+	docker exec -d py-walletconnect-bridge redis-server
 	rm dump.rdb
