@@ -73,8 +73,7 @@ $ make update
 
 $ make update BRANCH=develop
 ```
-
-### Skip Certbot
+### Skip Cerbot
 
 This approach uses [Certbot](https://certbot.eff.org/) to generate real SSL certificates for your configured nginx hosts. If you would prefer to use the self signed certificates, you can pass the `--skip-certbot` flag to `docker run` as follows:
 
