@@ -48,9 +48,7 @@ $ make run
 
 You can test it at http://bridge.mydomain.com/hello
 
-**Optional**
-
-#### Change Branch
+### Choose Branch
 
 This setup defaults to `master` branch in order to build a Docker image from another branch, run the following command:
 
@@ -64,19 +62,19 @@ $ make build BRANCH=develop
 
 For this sample configuration file, the bridge will be available at http://bridge.mydomain.com/ . After specifying bridge.mydomain.com to 0.0.0.0 in /etc/hosts,
 
-#### Update Bridge
+### Update Bridge
 
 To update the bridge, just run the following and it will maintain the existing state of the existing bridge sessions and quickly swap containers to the new version
 
 ```bash
 $ make update
 
-# Optional
+# Optional (choose branch)
 
 $ make update BRANCH=develop
 ```
 
-#### Skip Certbot
+### Skip Certbot
 
 This approach uses [Certbot](https://certbot.eff.org/) to generate real SSL certificates for your configured nginx hosts. If you would prefer to use the self signed certificates, you can pass the `--skip-certbot` flag to `docker run` as follows:
 
@@ -94,7 +92,7 @@ Certbot certificates expire after 90 days. To renew, shut down the docker proces
 
 If you'd like to keep a separate Python environment for this project's installs, set up virtualenv
 
-```
+```bash
 $ pip install virtualenv virtualenvwrapper
 ```
 
@@ -109,7 +107,7 @@ source /usr/local/bin/virtualenvwrapper.sh
 
 From the project directory, run these commands to install the walletconnect-bridge package in a virtualenv called "walletconnect-bridge"
 
-```
+```bash
 $ mkvirtualenv walletconnect-bridge
 $ pip install -r requirements.txt
 $ python setup.py develop
@@ -117,18 +115,18 @@ $ python setup.py develop
 
 In another terminal, start local Redis instance
 
-```
+```bash
 $ redis-server
 ```
 
 Run the project locally
 
-```
+```bash
 $ walletconnect-bridge --redis-local
 ```
 
 Test your Bridge is working
 
-```
+```bash
 $ curl http://bridge.mydomain.com/hello
 ```
