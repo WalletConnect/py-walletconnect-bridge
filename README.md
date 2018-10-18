@@ -4,9 +4,9 @@ A full introduction is described in our docs: https://docs.walletconnect.org/tec
 
 ## Pre-requirements
 
-1.  Python
-2.  Docker (for Docker setup)
-3.  Make (for Make commands)
+1. Python
+2. Docker (for Docker setup)
+3. Make (for Make commands)
 
 ## Docker setup
 
