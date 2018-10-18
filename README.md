@@ -48,7 +48,9 @@ $ make run
 
 You can test it at http://bridge.mydomain.com/hello
 
-**Notes**
+**Optional**
+
+#### Change Branch
 
 This setup defaults to `master` branch in order to build a Docker image from another branch, run the following command:
 
@@ -61,6 +63,20 @@ $ make build BRANCH=develop
 ```
 
 For this sample configuration file, the bridge will be available at http://bridge.mydomain.com/ . After specifying bridge.mydomain.com to 0.0.0.0 in /etc/hosts,
+
+#### Update Bridge
+
+To update the bridge, just run the following and it will maintain the existing state of the existing bridge sessions and quickly swap containers to the new version
+
+```bash
+$ make update
+
+# Optional
+
+$ make update BRANCH=develop
+```
+
+#### Skip Certbot
 
 This approach uses [Certbot](https://certbot.eff.org/) to generate real SSL certificates for your configured nginx hosts. If you would prefer to use the self signed certificates, you can pass the `--skip-certbot` flag to `docker run` as follows:
 
