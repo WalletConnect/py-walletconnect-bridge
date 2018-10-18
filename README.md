@@ -13,54 +13,54 @@ A full introduction is described in our docs: https://docs.walletconnect.org/tec
 **Step 0.** Point DNS record to your box (required for SSL)
 
 ```bash
-  bridge.mydomain.com	   A	   192.168.1.1
+  <YOUR_BRIDGE_URL>	   A	   192.168.1.1
 ```
 
-**Step 1.** Change the domain name on the `nginx/defaultConf` file
+**Step 1.** Setup the bridge URL to match your DNS record
 
 ```bash
-L4    server_name bridge.mydomain.com;
+$ make setup URL=<YOUR_BRIDGE_URL>
 
-L10   server_name bridge.mydomain.com;
+# OR
 
-L28   proxy_redirect             http://0.0.0.0:8080 http://bridge.mydomain.com;
+$ sed -i -e 's/bridge.mydomain.com/<YOUR_BRIDGE_URL>/g' nginx/defaultConf && rm -rf nginx/defaultConf-e
 ```
 
 **Step 2.** Run the following command to build the Docker image
 
 ```bash
-$ docker build . -t py-walletconnect-bridge
+$ make build
 
 # OR
 
-$ make build
+$ docker build . -t py-walletconnect-bridge
 ```
 
 **Step 3.** Finally run the following command to run the Docker container
 
 ```bash
-$ docker run -it -v $(pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge
+$ make run
 
 # OR
 
-$ make run
+$ docker run -it -v $(pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge
 ```
 
-You can test it at http://bridge.mydomain.com/hello
+You can test it at https://<YOUR_BRIDGE_URL>/hello
 
 ### Choose Branch
 
 This setup defaults to `master` branch in order to build a Docker image from another branch, run the following command:
 
 ```bash
-$ docker build . -t py-walletconnect-bridge --build-arg branch=develop
+$ make build BRANCH=develop
 
 # OR
 
-$ make build BRANCH=develop
+$ docker build . -t py-walletconnect-bridge --build-arg branch=develop
 ```
 
-For this sample configuration file, the bridge will be available at http://bridge.mydomain.com/ . After specifying bridge.mydomain.com to 0.0.0.0 in /etc/hosts,
+For this sample configuration file, the bridge will be available at https://<YOUR_BRIDGE_URL>/ . After specifying <YOUR_BRIDGE_URL> to 0.0.0.0 in /etc/hosts,
 
 ### Update Bridge
 
@@ -73,16 +73,17 @@ $ make update
 
 $ make update BRANCH=develop
 ```
+
 ### Skip Cerbot
 
 This approach uses [Certbot](https://certbot.eff.org/) to generate real SSL certificates for your configured nginx hosts. If you would prefer to use the self signed certificates, you can pass the `--skip-certbot` flag to `docker run` as follows:
 
 ```bash
-$ docker run -it -v $(pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge --skip-certbot
+$ make run_no_certbot
 
 # OR
 
-$ make run_no_certbot
+$ docker run -it -v $(pwd)/:/source/ -p 443:443 -p 80:80 py-walletconnect-bridge --skip-certbot
 ```
 
 Certbot certificates expire after 90 days. To renew, shut down the docker process and run `make renew`. You should back up your old certs before doing this, as they will be deleted.
@@ -97,7 +98,7 @@ $ pip install virtualenv virtualenvwrapper
 
 Add the following to your ~/.bashrc
 
-```
+```bash
 export WORKON_HOME=$HOME/.virtualenvs~
 export PROJECT_HOME=$HOME/Devel
 export VIRTUALENVWRAPPER_PYTHON=/usr/local/bin/python3
@@ -127,5 +128,5 @@ $ walletconnect-bridge --redis-local
 Test your Bridge is working
 
 ```bash
-$ curl http://bridge.mydomain.com/hello
+$ curl https://<YOUR_BRIDGE_URL>/hello
 ```

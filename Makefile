@@ -1,9 +1,13 @@
 # make targets for WalletConnect/py-walletconnect-bridge
 
 BRANCH=master
+URL=bridge.mydomain.com
 
 default:
-	echo "Available tasks: build, clean, renew, run, run_skip_certbot, update"
+	echo "Available tasks: setup, build, clean, renew, run, run_skip_certbot, update"
+
+setup:
+	sed -i -e 's/bridge.mydomain.com/$(URL)/g' nginx/defaultConf && rm -rf nginx/defaultConf-e
 
 build:
 	docker build . -t py-walletconnect-bridge --build-arg branch=$(BRANCH)
