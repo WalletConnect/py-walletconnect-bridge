@@ -1,4 +1,6 @@
-# WalletConnect Bridge Python Implementation
+# WalletConnect Bridge Python Implementation 
+
+![travis](https://travis-ci.org/WalletConnect/py-walletconnect-bridge.svg?branch=master)
 
 A full introduction is described in our docs: https://docs.walletconnect.org/technical-specification
 
