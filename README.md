@@ -50,14 +50,14 @@ You can test it at https://<YOUR_BRIDGE_URL>/hello
 
 ### Choose Branch
 
-This setup defaults to `master` branch in order to build a Docker image from another branch, run the following command:
+This setup defaults to the active branch in your current directory in order to build a Docker image from another branch, run the following command:
 
 ```bash
-$ make build BRANCH=develop
+$ make build BRANCH=v0.7.x
 
 # OR
 
-$ docker build . -t py-walletconnect-bridge --build-arg branch=develop
+$ docker build . -t py-walletconnect-bridge --build-arg branch=v0.7.x
 ```
 
 For this sample configuration file, the bridge will be available at https://<YOUR_BRIDGE_URL>/ . After specifying <YOUR_BRIDGE_URL> to 0.0.0.0 in /etc/hosts,
