@@ -6,4 +6,4 @@ services:
 script:
   - make setup URL=test-bridge.mydomain.com
   - make build
-  - make run_skip_certbot
+  - make run_daemon_skip_certbot

@@ -25,6 +25,9 @@ run:
 run_skip_certbot:
 	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" py-walletconnect-bridge --skip-certbot
 
+run_daemon_skip_certbot:
+	docker run -t -d -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" py-walletconnect-bridge --skip-certbot
+
 update:
 	# build a new image
 	docker build . -t py-walletconnect-bridge --build-arg branch=$(BRANCH)
