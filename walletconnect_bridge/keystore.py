@@ -57,7 +57,7 @@ async def remove_session_data(conn, session_id):
 
 
 async def add_push_data(conn, session_id, push_data, expiration_in_seconds):
-  # TODO what if we want push_endpoint to be null?
+  # TODO what if we want push_webhook to be null?
   key = push_session_key(session_id)
   data = json.dumps(push_data)
   success = await write(conn, key, data, expiration_in_seconds)

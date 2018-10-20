@@ -128,7 +128,7 @@ async def new_call(request):
     dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
     await keystore.add_call_data(redis_conn, session_id, call_id, call_data, expiration_in_seconds=CALL_DATA_EXPIRATION)
-    # Notify wallet push endpoint
+    # Notify wallet push webhook
     push_data = await keystore.get_push_data(redis_conn, session_id)
     session = request.app[SESSION]
     await send_push_request(session, push_data, session_id, call_id, dapp_name)
@@ -143,7 +143,7 @@ async def new_call(request):
   except KeystorePushTokenError:
     return web.json_response(error_message('Error finding Push token for session'), status=500)
   except WalletConnectPushError:
-    return web.json_response(error_message('Error sending message to walletconnect push endpoint'), status=500)
+    return web.json_response(error_message('Error sending message to walletconnect push webhook'), status=500)
   except:
       return web.json_response(error_message('Error unknown'), status=500)
 
@@ -222,7 +222,7 @@ async def get_call_status(request):
 async def send_push_request(session, push_data, session_id, call_id, dapp_name):
   push_type = push_data['type']
   push_token = push_data['token']
-  push_endpoint = push_data['endpoint']
+  push_webhook = push_data['webhook']
   payload = {
     'sessionId': session_id,
     'callId': call_id,
@@ -231,7 +231,7 @@ async def send_push_request(session, push_data, session_id, call_id, dapp_name):
     'dappName': dapp_name
   }
   headers = {'Content-Type': 'application/json'}
-  response = await session.post(push_endpoint, json=payload, headers=headers)
+  response = await session.post(push_webhook, json=payload, headers=headers)
   if response.status != 200:
     raise WalletConnectPushError
 
