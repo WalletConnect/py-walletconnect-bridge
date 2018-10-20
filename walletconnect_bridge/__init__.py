@@ -72,7 +72,8 @@ async def update_session(request):
     push_data = request_json['push']
     session_data = {'encryptionPayload': request_json['encryptionPayload']}
     redis_conn = get_redis_master(request.app)
-    await keystore.add_push_data(redis_conn, session_id, push_data, expiration_in_seconds=SESSION_EXPIRATION)
+    if push_data:
+      await keystore.add_push_data(redis_conn, session_id, push_data, expiration_in_seconds=SESSION_EXPIRATION)
     expires = await keystore.update_session_data(redis_conn, session_id, session_data, expiration_in_seconds=SESSION_EXPIRATION)
     session_data = {'expires': expires}
     return web.json_response(session_data)
@@ -124,14 +125,13 @@ async def new_call(request):
     session_id = request.match_info['sessionId']
     call_id = str(uuid.uuid4())
     call_data = {'encryptionPayload': request_json['encryptionPayload']}
-    # TODO could be optional notification data
     dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
     await keystore.add_call_data(redis_conn, session_id, call_id, call_data, expiration_in_seconds=CALL_DATA_EXPIRATION)
-    # Notify wallet push webhook
     push_data = await keystore.get_push_data(redis_conn, session_id)
-    session = request.app[SESSION]
-    await send_push_request(session, push_data, session_id, call_id, dapp_name)
+    if push_data:
+      session = request.app[SESSION]
+      await send_push_request(session, push_data, session_id, call_id, dapp_name)
     data_message = {'callId': call_id}
     return web.json_response(data_message, status=201)
   except KeystorePushTokenError:
