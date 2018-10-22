@@ -57,7 +57,6 @@ async def remove_session_data(conn, session_id):
 
 
 async def add_push_data(conn, session_id, push_data, expiration_in_seconds):
-  # TODO what if we want push_endpoint to be null?
   key = push_session_key(session_id)
   data = json.dumps(push_data)
   success = await write(conn, key, data, expiration_in_seconds)
@@ -71,7 +70,7 @@ async def get_push_data(conn, session_id):
   session_key = push_session_key(session_id)
   data = await conn.get(session_key)
   if not data:
-    raise KeystorePushTokenError
+    return None
   return json.loads(data)
 
 
