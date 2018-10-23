@@ -23,18 +23,18 @@ run:
 	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" py-walletconnect-bridge
 
 run_skip_certbot:
-	$(MAKE) run --skip-certbot
+	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" py-walletconnect-bridge run --skip-certbot
 
 run_daemon:
 	docker run -it -d -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" py-walletconnect-bridge
 
 run_daemon_skip_certbot:
-	$(MAKE) run_daemon --skip-certbot
+	docker run -it -d -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" py-walletconnect-bridge run_daemon --skip-certbot
 
 update:
 	# build a new image
-	$(MAKE) build
-
+	make build
+	
 	# save current state of DB and copy it to local machine
 	docker exec py-walletconnect-bridge redis-cli SAVE
 	docker cp py-walletconnect-bridge:/py-walletconnect-bridge/dump.rdb dump.rdb
@@ -43,8 +43,8 @@ update:
 	docker container rm -f py-walletconnect-bridge
 
 	# start the container with `-d` to run in background
-	$(MAKE) run_daemon
-
+	make run_daemon
+	
 	# stop the redis server, copy the previous state and restart the server
 	docker exec py-walletconnect-bridge redis-cli SHUTDOWN
 	docker cp dump.rdb py-walletconnect-bridge:/py-walletconnect-bridge/dump.rdb
