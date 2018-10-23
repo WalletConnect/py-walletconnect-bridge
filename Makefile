@@ -5,7 +5,7 @@ HASH := $(shell git rev-parse HEAD)
 URL=bridge.mydomain.com
 
 default:
-	echo "Available tasks: setup, build, clean, renew, run, run_skip_certbot, update"
+	echo "Available tasks: setup, build, clean, renew, run, run_skip_certbot, run_daemon, run_daemon_skip_certbot, update"
 
 setup:
 	sed -i -e 's/bridge.mydomain.com/$(URL)/g' nginx/defaultConf && rm -rf nginx/defaultConf-e
@@ -23,14 +23,17 @@ run:
 	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" py-walletconnect-bridge
 
 run_skip_certbot:
-	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" py-walletconnect-bridge --skip-certbot
+	$(MAKE) run --skip-certbot
+
+run_daemon:
+	docker run -it -d -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" py-walletconnect-bridge
 
 run_daemon_skip_certbot:
-	docker run -t -d -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" py-walletconnect-bridge --skip-certbot
+	$(MAKE) run_daemon --skip-certbot
 
 update:
 	# build a new image
-	docker build . -t py-walletconnect-bridge --build-arg branch=$(BRANCH)
+	$(MAKE) build
 	
 	# save current state of DB and copy it to local machine
 	docker exec py-walletconnect-bridge redis-cli SAVE
@@ -40,7 +43,7 @@ update:
 	docker container rm -f py-walletconnect-bridge
 
 	# start the container with `-d` to run in background
-	docker run -it -v $(shell pwd)/:/source/ -p 443:443 -p 80:80 --name "py-walletconnect-bridge" -d py-walletconnect-bridge
+	$(MAKE) run_daemon
 	
 	# stop the redis server, copy the previous state and restart the server
 	docker exec py-walletconnect-bridge redis-cli SHUTDOWN
