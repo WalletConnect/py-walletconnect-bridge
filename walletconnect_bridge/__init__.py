@@ -69,7 +69,7 @@ async def update_session(request):
   request_json = await request.json()
   try:
     session_id = request.match_info['sessionId']
-    push_data = request_json['push']
+    push_data = request_json.get('push', None)
     session_data = {'encryptionPayload': request_json['encryptionPayload']}
     redis_conn = get_redis_master(request.app)
     if push_data:
