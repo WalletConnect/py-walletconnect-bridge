@@ -13,7 +13,7 @@ setup:
 build:
 	docker build . -t py-walletconnect-bridge \
 		--build-arg branch=$(BRANCH) \
-		--build-arg revision=$(shell git ls-remote https://github.com/WalletConnect/py-walletconnect-bridge $(BRANCH) | cut -f 1)
+		--build-arg revision=$(shell git ls-remote https://github.com/WalletConnect/py-walletconnect-bridge $(BRANCH) | head -n 1 | cut -f 1)
 
 clean:
 	sudo rm -rfv ssl/certbot/*
