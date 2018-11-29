@@ -10,6 +10,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
 RUN add-apt-repository ppa:certbot/certbot
 RUN apt-get update
 RUN apt-get install -y python-certbot-nginx
+ARG revision
 RUN git clone https://github.com/WalletConnect/py-walletconnect-bridge
 WORKDIR /py-walletconnect-bridge
 RUN git checkout ${branch}

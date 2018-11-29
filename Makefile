@@ -11,7 +11,9 @@ setup:
 	sed -i -e 's/bridge.mydomain.com/$(URL)/g' nginx/defaultConf && rm -rf nginx/defaultConf-e
 
 build:
-	docker build . -t py-walletconnect-bridge --build-arg branch=$(BRANCH)
+	docker build . -t py-walletconnect-bridge \
+		--build-arg branch=$(BRANCH) \
+		--build-arg revision=$(shell git ls-remote https://github.com/WalletConnect/py-walletconnect-bridge $(BRANCH) | head -n 1 | cut -f 1)
 
 clean:
 	sudo rm -rfv ssl/certbot/*
