@@ -125,13 +125,12 @@ async def new_call(request):
     session_id = request.match_info['sessionId']
     call_id = str(uuid.uuid4())
     call_data = {'encryptionPayload': request_json['encryptionPayload']}
-    dapp_name = request_json['dappName']
     redis_conn = get_redis_master(request.app)
     await keystore.add_call_data(redis_conn, session_id, call_id, call_data, expiration_in_seconds=CALL_DATA_EXPIRATION)
     push_data = await keystore.get_push_data(redis_conn, session_id)
     if push_data:
       session = request.app[SESSION]
-      await send_push_request(session, push_data, session_id, call_id, dapp_name)
+      await send_push_request(session, push_data, session_id, call_id)
     data_message = {'callId': call_id}
     return web.json_response(data_message, status=201)
   except KeystorePushTokenError:
@@ -219,7 +218,7 @@ async def get_call_status(request):
     return web.json_response(error_message('Error unknown'), status=500)
 
 
-async def send_push_request(session, push_data, session_id, call_id, dapp_name):
+async def send_push_request(session, push_data, session_id, call_id):
   push_type = push_data['type']
   push_token = push_data['token']
   push_webhook = push_data['webhook']
@@ -227,8 +226,7 @@ async def send_push_request(session, push_data, session_id, call_id, dapp_name):
     'sessionId': session_id,
     'callId': call_id,
     'pushType': push_type,
-    'pushToken': push_token,
-    'dappName': dapp_name
+    'pushToken': push_token
   }
   headers = {'Content-Type': 'application/json'}
   response = await session.post(push_webhook, json=payload, headers=headers)
